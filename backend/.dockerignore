@@ -1,0 +1,16 @@
+node_modules
+dist
+build
+coverage
+*.log
+
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+.env
+.env.local
+.env.*.local

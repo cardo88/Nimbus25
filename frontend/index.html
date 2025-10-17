@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Nimbus25 – Stub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>body{font-family:system-ui,Arial;margin:2rem;max-width:720px}code{background:#f4f4f4;padding:.2rem .4rem;border-radius:4px}</style>
+</head>
+<body>
+  <h1>Nimbus25 – Frontend Stub</h1>
+  <p>Este front mínimo llama al backend vía <code>/health</code> y <code>/status</code>.</p>
+  <button id="btn">Probar backend</button>
+  <pre id="out">Listo para probar…</pre>
+  <script>
+    const API = (window.location.origin.replace(/:\d+$/, ':8081') === window.location.origin)
+      ? 'http://localhost:8080'
+      : '/api';
+
+    document.getElementById('btn').onclick = async () => {
+      const out = document.getElementById('out');
+      out.textContent = 'Consultando...';
+      try {
+        const h = await fetch(API + '/health').then(r => r.json());
+        const s = await fetch(API + '/status').then(r => r.json());
+        out.textContent = 'HEALTH:\n' + JSON.stringify(h, null, 2) + '\n\nSTATUS:\n' + JSON.stringify(s, null, 2);
+      } catch (e) {
+        out.textContent = 'Error: ' + e.message + '\n(Revisar que el backend esté UP)';
+      }
+    };
+  </script>
+</body>
+</html>
