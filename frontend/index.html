@@ -12,9 +12,7 @@
   <button id="btn">Probar backend</button>
   <pre id="out">Listo para probar…</pre>
   <script>
-    const API = (window.location.origin.replace(/:\d+$/, ':8081') === window.location.origin)
-      ? 'http://localhost:8080'
-      : '/api';
+    const API = '/api';
 
     document.getElementById('btn').onclick = async () => {
       const out = document.getElementById('out');
