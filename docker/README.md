@@ -15,9 +15,9 @@ Requisitos: Docker + Docker Compose.
    ```
 3. Verificar:
 
-   * Frontend: [http://localhost:${FRONTEND_PORT:-8081}](http://localhost:${FRONTEND_PORT:-8081})
-   * Backend:  [http://localhost:${BACKEND_PORT:-8080}/health](http://localhost:${BACKEND_PORT:-8080}/health)
-   * Status:   [http://localhost:${BACKEND_PORT:-8080}/status](http://localhost:${BACKEND_PORT:-8080}/status)
+   * Frontend: [http://localhost:8081](http://localhost:${FRONTEND_PORT:-8081})
+   * Backend:  [http://localhost:8080/health](http://localhost:${BACKEND_PORT:-8080}/health)
+   * Status:   [http://localhost:8080/status](http://localhost:${BACKEND_PORT:-8080}/status)
 4. Pruebas smoke:
 
    ```bash
@@ -33,3 +33,16 @@ Requisitos: Docker + Docker Compose.
 
 > Fuentes de datos: NASA POWER, GES DISC / Earthdata; complementario Open-Meteo.
 > La app reporta **probabilidades** de condiciones extremas basadas en datos históricos.
+
+---
+
+## Limpieza y volver a levantar
+
+   ```bash
+   cd docker
+   docker compose down -v
+   docker compose build --no-cache
+   docker compose up
+   ```
+
+---
