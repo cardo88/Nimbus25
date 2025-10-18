@@ -91,7 +91,6 @@ Devuelve la probabilidad estimada de que ocurra una **condición extrema** (lluv
 | `lat`         | (float) Latitud en grados decimales                              |
 | `lon`         | (float) Longitud en grados decimales                             |
 | `date`        | (string, formato `YYYY-MM-DD`) Fecha de consulta                 |
-| `condition`   | (string) Tipo de condición: `rain`, `wind`, `heat`               |
 
 #### ✅ Respuesta 200 OK
 
