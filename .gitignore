@@ -1,0 +1,23 @@
+# Root .gitignore for Nimbus25 repo
+# Node
+node_modules/
+
+# Expo / React Native app artifacts (app-level)
+Nimbus25App/node_modules/
+Nimbus25App/.expo/
+Nimbus25App/.expo-shared/
+
+# iOS build / CocoaPods artifacts (generated)
+Nimbus25App/ios/Pods/
+Nimbus25App/ios/build/
+Nimbus25App/ios/*.xcworkspace/
+Nimbus25App/ios/Pods.xcodeproj/
+
+# Android build artifacts
+Nimbus25App/android/.gradle/
+Nimbus25App/android/app/build/
+
+# macOS / editor
+.DS_Store
+.vscode/
+*.log
