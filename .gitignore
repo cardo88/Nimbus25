@@ -1,13 +1,93 @@
-# Root .gitignore for Nimbus25 repo
-# Node
-node_modules/
+# ===================================
+# GENERALES
+# ===================================
+# Entornos y configuración sensible
+.env
+.env.local
+.env.*.local
+!/.env.example      # mantener el ejemplo versionado
 
-# Expo / React Native app artifacts (app-level)
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+*.log
+*.bak
+*.pid
+*.seed
+*.out
+
+# Logs y reportes
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===================================
+# NODE (backend / frontend)
+# ===================================
+node_modules/
+dist/
+build/
+.cache/
+coverage/
+.next/
+out/
+.vite/
+*.tsbuildinfo
+
+# ===================================
+# DOCKER
+# ===================================
+# Archivos generados por compose
+docker/compose.log
+docker/*.pid
+docker/*.log
+docker/tmp/
+# Volúmenes locales o binds temporales
+volumes/
+data/
+tmp/
+*.sock
+
+# ===================================
+# IDEs y EDITORES
+# ===================================
+.vscode/
+.idea/
+*.iml
+*.code-workspace
+
+# ===================================
+# TESTS / CI
+# ===================================
+coverage/
+reports/
+jest-html-reporters-*
+test-output/
+*.coverage
+*.junit.xml
+
+# ===================================
+# DOCUMENTACIÓN / EXPORTS
+# ===================================
+docs/**/*.pdf
+docs/**/*.zip
+docs/**/*.docx
+docs/**/*.pptx
+!docs/**/*.md
+
+# ===================================
+# EXPO / REACT NATIVE (Nimbus25App)
+# ===================================
 Nimbus25App/node_modules/
 Nimbus25App/.expo/
 Nimbus25App/.expo-shared/
 
-# iOS build / CocoaPods artifacts (generated)
+# iOS build / CocoaPods artifacts
 Nimbus25App/ios/Pods/
 Nimbus25App/ios/build/
 Nimbus25App/ios/*.xcworkspace/
@@ -16,8 +96,3 @@ Nimbus25App/ios/Pods.xcodeproj/
 # Android build artifacts
 Nimbus25App/android/.gradle/
 Nimbus25App/android/app/build/
-
-# macOS / editor
-.DS_Store
-.vscode/
-*.log
