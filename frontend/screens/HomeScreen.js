@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, Text, SafeAreaView, TextInput, ActivityIndicator, Platform, FlatList, TouchableWithoutFeedback, Image } from 'react-native';
 import { Modal } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-import styles from '../styles';
+import styles from '../styles/Home';
 import { format } from 'date-fns';
 
 export default function HomeScreen({ navigation }) {

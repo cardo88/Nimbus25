@@ -21,3 +21,13 @@ ios/*.xcworkspace/
 .DS_Store
 *.log
 .vscode/
+
+# CocoaPods
+ios/Pods/
+ios/Pods.xcodeproj/
+
+
+# CocoaPods
+ios/Pods/
+ios/Pods.xcodeproj/
+

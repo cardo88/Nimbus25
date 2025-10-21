@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, SafeAreaView } from 'react-native';
-import styles from '../styles';
+import styles from '../styles/Forecast';
 import { format, addDays, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 

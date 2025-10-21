@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, FlatList, Image, Dimensions, Platform } from 'react-native';
-import styles from '../styles';
+import styles from '../styles/Detail';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
