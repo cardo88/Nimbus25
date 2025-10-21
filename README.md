@@ -134,6 +134,32 @@ Nimbus25/
 
 ---
 
+## 🧹 Limpiar artefactos generados (nota para repo)
+
+Este repositorio mantiene sólo el código fuente y documentación. Algunos archivos y carpetas se generan localmente por herramientas de construcción (CocoaPods, Gradle, Expo) y no deberían estar versionados. Si quieres reducir el tamaño del repo o preparar una copia limpia, puedes eliminar los artefactos generados y regenerarlos localmente:
+
+1. Eliminar artefactos (seguro):
+
+```bash
+# desde la raíz del repo
+rm -rf Nimbus25App/node_modules Nimbus25App/.expo Nimbus25App/android/app/build Nimbus25App/ios/Pods Nimbus25App/ios/build Nimbus25App/ios/*.xcworkspace
+```
+
+1. Regenerar localmente:
+
+```bash
+cd Nimbus25App
+npm install
+# iOS: desde Mac con CocoaPods instalado
+cd ios && pod install
+# Volver y ejecutar
+cd ..
+expo start
+```
+
+Si no tienes un entorno nativo (Xcode/Android Studio) puedes seguir usando Expo Go para desarrollo sin ejecutar los pasos nativos.
+
+
 ## 🛰️ Inspiración
 
 > “Explorar el clima, entender los patrones, y usar los datos de la NASA para ayudar a la gente a planificar su día con confianza.”  
