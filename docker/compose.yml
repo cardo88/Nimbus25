@@ -6,11 +6,15 @@ services:
     container_name: nimbus25-cache
     ports:
       - "6379:6379"
+    volumes:
+      - redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 2s
       retries: 20
+    networks:
+      - nimbus25-network
 
   backend:
     build:
@@ -36,6 +40,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
+    networks:
+      - nimbus25-network
 
   frontend:
     build:
@@ -55,3 +61,12 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
+    networks:
+      - nimbus25-network
+
+volumes:
+  redis-data:
+
+networks:
+  nimbus25-network:
+    driver: bridge
