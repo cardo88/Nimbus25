@@ -1,4 +1,7 @@
-import { getWeatherData } from "../services/integrationServiceMock.js";
+//import { getWeatherData } from "../services/integrationServiceMock.js";
+//import { getWeatherData } from "../services/integrationService.js";
+import { getWeatherData } from '../services/weather/index.js';
+
 
 export const getProbability = async (req, res) => {
     try {
