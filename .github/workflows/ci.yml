@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [ "feature/github-actions" ]
+  pull_request:
+    branches: [ "feature/github-actions" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copiar .env
+        run: cp .env.example .env
+      - name: Setup Node (para tests front/back si aplica)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    needs: prepare
+    if: |
+      github.ref == 'refs/heads/feature/github-actions' ||
+      (github.event_name == 'pull_request' && github.base_ref == 'feature/github-actions')
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+
+      - name: Build & Up (Compose)
+        working-directory: docker
+        run: |
+          docker compose build
+          docker compose up -d
+          echo "Esperando servicios…"
+          sleep 10
+
+      - name: Smoke tests
+        working-directory: docker
+        run: bash ./test/smoke.sh
+
+      - name: Subir logs (si falla)
+        if: failure()
+        working-directory: docker
+        run: docker compose logs --no-color > compose.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compose-logs
+          path: docker/compose.log
+
+      - name: Down
+        if: always()
+        working-directory: docker
+        run: docker compose down -v
+
+  unit-and-lint:
+    runs-on: ubuntu-latest
+    needs: prepare
+    if: |
+      github.ref == 'refs/heads/feature/github-actions' ||
+      (github.event_name == 'pull_request' && github.base_ref == 'feature/github-actions')
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+
+      # Frontend (si existe package.json)
+      - name: Frontend install+test
+        if: hashFiles('frontend/package.json') != ''
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run lint --if-present
+          npm test --if-present -- --ci --reporters=default --reporters=jest-junit
+
+      # Backend
+      - name: Backend install+test
+        if: hashFiles('backend/package.json') != ''
+        working-directory: backend
+        run: |
+          npm ci
+          npm run lint --if-present
+          npm test --if-present -- --ci --reporters=default --reporters=jest-junit
