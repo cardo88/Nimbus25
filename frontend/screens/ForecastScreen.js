@@ -14,7 +14,6 @@ function buildForecastFrom(startDate, count = 5) {
       dayNumber: format(d, 'dd', { locale: es }),
       weekdayShort: format(d, 'EEE', { locale: es }),
       temp: 18 - i,
-      realFeel: 19 - i,
       icon: i === 0 ? '☀️' : (i === 3 ? '🌦️' : '☁️'),
       rain: i === 3 ? 18 : 0,
     });
@@ -70,10 +69,6 @@ export default function ForecastScreen({ navigation, route }) {
                   <Text style={{ color: '#FFF', fontSize: 18 }}>{item.temp}°</Text>
                 </View>
 
-                <View style={{ width: 110, alignItems: 'center' }}>
-                  <Text style={{ color: '#CFE3FF', fontSize: 12 }}>{item.realFeel}° RealFeel</Text>
-                </View>
-
                 <View style={{ width: 50, alignItems: 'center' }}>
                   <Text style={{ color: '#9EC3FF' }}>💧{item.rain}%</Text>
                 </View>
@@ -90,13 +85,13 @@ export default function ForecastScreen({ navigation, route }) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: '#CFE9FF', fontWeight: '600', marginBottom: 6 }}>Recomendación:</Text>
-            <Text style={styles.recommendationText}>Go out with some warm clothing.
-              The day is a bit windy and without solar heat.</Text>
+            <Text style={styles.recommendationText}>Sal con algo de ropa fresca
+              El día está un poco ventoso y con calor solar.</Text>
           </View>
         </View>
 
         <TouchableOpacity style={[styles.button, { borderRadius: 28, paddingVertical: 14, marginTop: 10 }]} onPress={() => { }}>
-          <Text style={[styles.buttonText, { color: '#0F2B3A' }]}>Download Weather</Text>
+          <Text style={[styles.buttonText, { color: '#0F2B3A' }]}>Descargar clima</Text>
         </TouchableOpacity>
 
       </View>
