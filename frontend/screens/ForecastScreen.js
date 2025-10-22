@@ -3,7 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, Image, SafeAreaView } from 'rea
 import styles from '../styles';
 import { format, addDays, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import Constants from 'expo-constants'; // <-- added
+import Constants from 'expo-constants';
 
 function buildForecastFrom(startDate, count = 5) {
   const days = [];
@@ -14,12 +14,11 @@ function buildForecastFrom(startDate, count = 5) {
       date: d,
       dayNumber: format(d, 'dd', { locale: es }),
       weekdayShort: format(d, 'EEE', { locale: es }),
-      // placeholders until backend response replaces them
-      temp: 18 - i,
-      realFeel: 19 - i,
-      icon: i === 0 ? '☀️' : (i === 3 ? '🌦️' : '☁️'),
-      rain: i === 3 ? 18 : 0,
-      // will be filled from backend:
+      // no more placeholders
+      temp: null,
+      realFeel: null,
+      icon: null,
+      rain: null,
       probability: null,
       condition: null,
     });
@@ -38,13 +37,16 @@ export default function ForecastScreen({ navigation, route }) {
   // - else try to extract IP from Expo debuggerHost (works when running via Expo devtools)
   // - fallback to localhost
   const hostFromDebug = Constants.manifest?.debuggerHost?.split(':')[0] ?? null;
-  const BACKEND_HOST = route.params?.backendHost ?? hostFromDebug ?? 'localhost';
-  const BACKEND_URL = `http://${BACKEND_HOST}:8000`; // ajustar puerto si hace falta
+  const debuggerHost = Constants.manifest?.debuggerHost ?? Constants.expoConfig?.hostUri;
+  const hostIP = debuggerHost?.split(':')[0] ?? 'localhost';
+
+  const BACKEND_URL = `http://${hostIP}:8080`;
 
   const latParam = route.params?.lat ?? -34.9011;
   const lonParam = route.params?.lon ?? -56.1645;
 
   const [forecastData, setForecastData] = useState(() => buildForecastFrom(baseDate, 5));
+  const [refresh, setRefresh] = useState(false);
 
   // rebuild initial days whenever baseDate changes, then fetch backend probabilities
   useEffect(() => {
@@ -52,6 +54,7 @@ export default function ForecastScreen({ navigation, route }) {
     setForecastData(built);
 
     let mounted = true;
+    console.log("🌐 BACKEND_URL =", BACKEND_URL);
     const fetchForDay = async (day) => {
       const dateStr = format(day.date, 'yyyy-MM-dd');
       console.log(`[Forecast] attempting POST ${BACKEND_URL}/probability for date ${dateStr}, lat=${latParam}, lon=${lonParam}`);
@@ -70,17 +73,25 @@ export default function ForecastScreen({ navigation, route }) {
         const json = await res.json();
         console.log(`[Forecast] successful response for ${dateStr}:`, json);
         if (!mounted) return;
-        setForecastData(prev => prev.map(d => d.id === day.id ? {
-          ...d,
-          probability: json.probability,
-          condition: json.condition,
-          // use backend temperatures if present, fallback to previous temp
-          temp: json.temperature_max != null ? Math.round(json.temperature_max) : d.temp,
-          realFeel: (json.temperature_max != null && json.temperature_min != null)
-            ? Math.round((json.temperature_max + json.temperature_min) / 2)
-            : d.realFeel,
-          rain: json.probability != null ? Math.round(json.probability * 100) : d.rain,
-        } : d));
+        setForecastData(prev => {
+          return prev.map(d => {
+            if (d.id === day.id) {
+              return {
+                ...d,
+                probability: json.probability,
+                condition: json.condition,
+                // use backend temperatures if present, fallback to previous temp
+                temp: json.temperature_max != null ? Math.round(json.temperature_max) : null,
+                realFeel: (json.temperature_max != null && json.temperature_min != null)
+                  ? Math.round((json.temperature_max + json.temperature_min) / 2)
+                  : null,
+                rain: json.probability != null ? Math.round(json.probability * 100) : null,
+              };
+            } else {
+              return d;
+            }
+          });
+        });
       } catch (e) {
         console.warn('Probability fetch error', e);
       }
@@ -90,20 +101,55 @@ export default function ForecastScreen({ navigation, route }) {
     built.forEach(day => fetchForDay(day));
 
     return () => { mounted = false; };
-  }, [baseDate, latParam, lonParam]);
+  }, [baseDate, latParam, lonParam, refresh]); // Add refresh here
 
-  const selectMonkeyForWeather = (temp, rain, condition) => {
-    // Prioriza lluvia por condición o probabilidad alta
-    if (condition === 'rainy' || (typeof rain === 'number' && rain >= 80)) return require('../assets/monkey-lluvia.png');
+const selectMonkeyForWeather = (temp, rain, condition) => {
+  if (condition === 'rainy' || (typeof rain === 'number' && rain >= 80)) return require('../assets/monkey-lluvia.png');
+  //if (condition === 'windy') return require('../assets/monkey-viento.png');
+  if (condition === 'sunny') return require('../assets/monkey-calor.png');
+  if (condition === 'cloudy') return require('../assets/monkey-normal.png');
+  
+  // fallback por temperatura si no hay condición
+  if (temp != null) {
     if (temp <= 10) return require('../assets/monkey-frio.png');
     if (temp > 10 && temp <= 15) return require('../assets/monkey-fresco.png');
     if (temp > 15 && temp <= 20) return require('../assets/monkey-normal.png');
     return require('../assets/monkey-calor.png');
-  };
+  }
+
+  // fallback default
+  return require('../assets/monkey-normal.png');
+};
+
 
   const handleDayPress = (item, index) => {
+    setRefresh(prev => !prev); // Add this line
     navigation.navigate('Details', { forecastData, selectedIndex: index, locationLabel });
   };
+
+const getRecommendation = (temp, rain, condition) => {
+  if (condition === 'rainy' || (typeof rain === 'number' && rain >= 80)) {
+    return 'Lleva paraguas o impermeable, se espera lluvia intensa.';
+  }
+  //if (condition === 'windy') return 'Hace viento, usa ropa ajustada y protege objetos ligeros.';
+  if (condition === 'sunny') {
+    if (temp != null && temp > 25) return 'Hace calor, lleva ropa ligera y protege tu piel del sol.';
+    return 'Día soleado, puedes salir con ropa cómoda.';
+  }
+  if (condition === 'cloudy') return 'Día nublado, considera llevar una chaqueta ligera.';
+  
+  // fallback por temperatura si no hay condición
+  if (temp != null) {
+    if (temp <= 10) return 'Hace frío, usa abrigo, gorro y guantes.';
+    if (temp > 10 && temp <= 15) return 'Temperatura fresca, lleva una chaqueta ligera.';
+    if (temp > 15 && temp <= 20) return 'Día templado, ropa cómoda es suficiente.';
+    return 'Día cálido, usa ropa ligera y cómoda.';
+  }
+
+  // fallback default
+  return 'Revisa el clima antes de salir.';
+};
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -127,21 +173,25 @@ export default function ForecastScreen({ navigation, route }) {
 
                 <View style={{ width: 40, alignItems: 'center' }}>
                   <Text style={{ fontSize: 22 }}>
-                    {/* if backend provided condition, map a simple icon */}
-                    { item.condition === 'sunny' ? '☀️' : item.condition === 'rainy' ? '🌧️' : item.condition === 'cloudy' ? '☁️' : item.icon }
+                    { item.condition === 'sunny' ? '☀️' :
+                      item.condition === 'rainy' ? '🌧️' :
+                      item.condition === 'cloudy' ? '☁️' :
+                      item.condition === 'windy' ? '🍃' :
+                      (item.condition != null ? item.condition : '') 
+                    }
                   </Text>
                 </View>
 
                 <View style={{ flex: 1, alignItems: 'center' }}>
-                  <Text style={{ color: '#FFF', fontSize: 18 }}>{item.temp}°</Text>
+                  <Text style={{ color: '#FFF', fontSize: 18 }}>{item.temp != null ? item.temp + '°' : '--'}</Text>
                 </View>
 
                 <View style={{ width: 110, alignItems: 'center' }}>
-                  <Text style={{ color: '#CFE3FF', fontSize: 12 }}>{item.realFeel}° RealFeel</Text>
+                  <Text style={{ color: '#CFE3FF', fontSize: 12 }}>{item.realFeel != null ? item.realFeel + '° RealFeel' : '--'}</Text>
                 </View>
 
                 <View style={{ width: 50, alignItems: 'center' }}>
-                  <Text style={{ color: '#9EC3FF' }}>💧{item.rain}%</Text>
+                  <Text style={{ color: '#9EC3FF' }}>💧{item.rain != null ? item.rain + '%' : '--'}</Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -163,8 +213,13 @@ export default function ForecastScreen({ navigation, route }) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: '#CFE9FF', fontWeight: '600', marginBottom: 6 }}>Recomendación:</Text>
-            <Text style={styles.recommendationText}>Go out with some warm clothing.
-              The day is a bit windy and without solar heat.</Text>
+              <Text style={styles.recommendationText}>
+                {getRecommendation(
+                  forecastData[0]?.temp ?? 18,
+                  forecastData[0]?.rain ?? 0,
+                  forecastData[0]?.condition
+                )}
+              </Text>
           </View>
         </View>
 
