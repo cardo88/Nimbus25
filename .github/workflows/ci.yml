@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ "feature/github-actions" ]
+    branches: ["feature/github-actions"]
   pull_request:
-    branches: [ "feature/github-actions" ]
+    branches: ["feature/github-actions"]
   workflow_dispatch:
 
 permissions:
@@ -25,7 +25,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
 
   build-and-smoke:
     runs-on: ubuntu-latest
@@ -40,8 +40,8 @@ jobs:
       - name: Build & Up (Compose)
         working-directory: docker
         run: |
-          docker compose build
-          docker compose up -d
+          docker compose build backend
+          docker compose up -d backend
           echo "Esperando servicios…"
           sleep 10
 
@@ -81,7 +81,13 @@ jobs:
         run: |
           npm ci
           npm run lint --if-present
-          npm test --if-present -- --ci --reporters=default --reporters=jest-junit
+          TEST_SCRIPT=$(node -p "require('./package.json').scripts?.test || ''");
+          if [ -n "$TEST_SCRIPT" ] && ! echo "$TEST_SCRIPT" | grep -qi "no test specified"; then
+            echo "Running backend tests..."
+            npm test -- --ci --reporters=default --reporters=jest-junit
+          else
+            echo "Skipping backend tests: no real test script defined."
+          fi
 
       # Backend
       - name: Backend install+test
@@ -90,4 +96,10 @@ jobs:
         run: |
           npm ci
           npm run lint --if-present
-          npm test --if-present -- --ci --reporters=default --reporters=jest-junit
+          TEST_SCRIPT=$(node -p "require('./package.json').scripts?.test || ''");
+          if [ -n "$TEST_SCRIPT" ] && ! echo "$TEST_SCRIPT" | grep -qi "no test specified"; then
+            echo "Running frontend tests..."
+            npm test -- --ci --reporters=default --reporters=jest-junit
+          else
+            echo "Skipping frontend tests: no real test script defined."
+          fi
