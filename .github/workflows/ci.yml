@@ -15,41 +15,78 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  prepare:
+
+  verify-gitignore:
+    name: Verify .gitignore (guard rails)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Copiar .env
-        run: cp .env.example .env
-      - name: Setup Node (para tests front/back si aplica)
+      - name: Ensure .gitignore exists and has critical entries
+        run: |
+          test -f .gitignore || (echo ".gitignore missing" && exit 1)
+          MUST_HAVE=(
+            ".env"
+            "node_modules/"
+            "dist/"
+            "build/"
+            "coverage/"
+            ".vscode/"
+            ".idea/"
+          )
+          for p in "${MUST_HAVE[@]}"; do
+            if ! grep -qE "^${p//\//\\/}(\$|)" .gitignore; then
+              echo "Missing .gitignore pattern: $p"; FAIL=1
+            fi
+          done
+          test -z "$FAIL" || exit 1
+
+  lint-and-unit-backend:
+    name: Backend lint & unit (if present)
+    runs-on: ubuntu-latest
+    needs: verify-gitignore
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Install
+        working-directory: backend
+        run: npm ci
+      - name: Lint (if present)
+        working-directory: backend
+        run: npm run lint --if-present
+      - name: Test (skip if placeholder)
+        working-directory: backend
+        run: |
+          TEST_SCRIPT=$(node -p "require('./package.json').scripts?.test || ''")
+          if [ -n "$TEST_SCRIPT" ] && ! echo "$TEST_SCRIPT" | grep -qi "no test specified"; then
+            npm test -- --ci --reporters=default --reporters=jest-junit
+          else
+            echo "Skipping backend tests: no real test script defined."
+          fi
 
-  build-and-smoke:
+  compose-smoke-backend:
+    name: Docker Compose smoke (backend only)
     runs-on: ubuntu-latest
-    needs: prepare
-    if: |
-      github.ref == 'refs/heads/feature/github-actions' ||
-      (github.event_name == 'pull_request' && github.base_ref == 'feature/github-actions')
+    needs: verify-gitignore
     steps:
       - uses: actions/checkout@v4
-      - run: cp .env.example .env
-
-      - name: Build & Up (Compose)
+      - name: Prepare env
+        run: cp .env.example .env
+      - name: Build & up (backend + cache)
         working-directory: docker
         run: |
-          docker compose build backend
-          docker compose up -d backend
-          echo "Esperando servicios…"
+          docker compose build cache backend
+          docker compose up -d cache backend
+          echo "Waiting services..."
           sleep 10
-
-      - name: Smoke tests
+      - name: Smoke /health and /status
         working-directory: docker
         run: bash ./test/smoke.sh
-
-      - name: Subir logs (si falla)
+      - name: Logs on failure
         if: failure()
         working-directory: docker
         run: docker compose logs --no-color > compose.log
@@ -58,48 +95,54 @@ jobs:
         with:
           name: compose-logs
           path: docker/compose.log
-
       - name: Down
         if: always()
         working-directory: docker
         run: docker compose down -v
 
-  unit-and-lint:
+  security-gitleaks:
+    name: Secrets scan (gitleaks)
     runs-on: ubuntu-latest
-    needs: prepare
-    if: |
-      github.ref == 'refs/heads/feature/github-actions' ||
-      (github.event_name == 'pull_request' && github.base_ref == 'feature/github-actions')
+    needs: [verify-gitignore]
     steps:
       - uses: actions/checkout@v4
-      - run: cp .env.example .env
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: detect --redact --verbose
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Frontend (si existe package.json)
-      - name: Frontend install+test
-        if: hashFiles('frontend/package.json') != ''
-        working-directory: frontend
-        run: |
-          npm ci
-          npm run lint --if-present
-          TEST_SCRIPT=$(node -p "require('./package.json').scripts?.test || ''");
-          if [ -n "$TEST_SCRIPT" ] && ! echo "$TEST_SCRIPT" | grep -qi "no test specified"; then
-            echo "Running backend tests..."
-            npm test -- --ci --reporters=default --reporters=jest-junit
-          else
-            echo "Skipping backend tests: no real test script defined."
-          fi
+  security-trivy-fs:
+    name: Trivy FS (repo deps)
+    runs-on: ubuntu-latest
+    needs: [verify-gitignore]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy filesystem (HIGH/CRITICAL fail)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          format: 'table'
+          exit-code: '1'
 
-      # Backend
-      - name: Backend install+test
-        if: hashFiles('backend/package.json') != ''
-        working-directory: backend
-        run: |
-          npm ci
-          npm run lint --if-present
-          TEST_SCRIPT=$(node -p "require('./package.json').scripts?.test || ''");
-          if [ -n "$TEST_SCRIPT" ] && ! echo "$TEST_SCRIPT" | grep -qi "no test specified"; then
-            echo "Running frontend tests..."
-            npm test -- --ci --reporters=default --reporters=jest-junit
-          else
-            echo "Skipping frontend tests: no real test script defined."
-          fi
+  security-trivy-image:
+    name: Trivy Image (backend)
+    runs-on: ubuntu-latest
+    needs: [compose-smoke-backend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image (tag for scan)
+        run: docker build -t nimbus25-backend:ci ./backend
+      - name: Scan backend image (HIGH/CRITICAL fail)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: 'nimbus25-backend:ci'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          format: 'table'
+          exit-code: '1'
