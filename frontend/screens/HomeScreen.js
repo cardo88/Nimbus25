@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, Text, SafeAreaView, TextInput, ActivityIndicator, Platform, FlatList, TouchableWithoutFeedback, Image } from 'react-native';
 import { Modal } from 'react-native';
+import ProfileModal from './ProfileModal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapView, { Marker } from 'react-native-maps';
 import styles from '../styles/Home';
 import { format } from 'date-fns';
 
-export default function HomeScreen({ navigation }) {
+export default function HomeScreen({ navigation, route }) {
   const [location, setLocation] = useState({
     latitude: -34.9011,
     longitude: -56.1645,
@@ -38,6 +40,7 @@ export default function HomeScreen({ navigation }) {
   };
   const [userInteracted, setUserInteracted] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
+  const [profileOpen, setProfileOpen] = useState(false);
   const suggestionTimer = useRef(null);
 
   useEffect(() => {
@@ -48,6 +51,29 @@ export default function HomeScreen({ navigation }) {
   useEffect(() => {
     console.log('userInteracted changed:', userInteracted, 'address:', address);
   }, [userInteracted, address]);
+
+  useEffect(() => {
+    const focus = route?.params?.focusLocation;
+    if (focus && typeof focus.lat === 'number' && typeof focus.lon === 'number') {
+      const lat = focus.lat;
+      const lon = focus.lon;
+      const latDelta = Math.min(deltas?.latitudeDelta || 0.04, 0.01);
+      const lonDelta = Math.min(deltas?.longitudeDelta || 0.04, 0.01);
+      const region = { latitude: lat, longitude: lon, latitudeDelta: latDelta, longitudeDelta: lonDelta };
+      setDeltas({ latitudeDelta: latDelta, longitudeDelta: lonDelta });
+      if (mapRef.current?.animateToRegion) mapRef.current.animateToRegion(region, 300);
+      setLocation({ latitude: lat, longitude: lon });
+      if (focus.label) {
+        setAddress(focus.label);
+        setLocationLabel(focus.label);
+      } else {
+        reverseGeocode(lat, lon);
+      }
+      setSuggestions([]);
+      setUserInteracted(true);
+      if (navigation.setParams) navigation.setParams({ focusLocation: undefined });
+    }
+  }, [route?.params?.focusLocation]);
 
   const handleMapPress = (e) => {
     const { coordinate } = e.nativeEvent;
@@ -170,6 +196,8 @@ export default function HomeScreen({ navigation }) {
           else setLocationLabel(top.display_name);
         }
         setUserInteracted(true);
+        // Save to history using top result
+        try { pushHistory({ type: 'search', label: top.display_name || query, lat, lon }); } catch(e){}
       } else {
         setAddress('No results');
       }
@@ -220,6 +248,20 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
+  const HISTORY_KEY = 'search_history';
+
+  const pushHistory = async (entry) => {
+    try {
+      await fetch('https://tu-backend.com/api/cache', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry)
+      });
+    } catch (e) {
+      console.warn('Failed to save history', e);
+    }
+  };
+
   const onChangeSearch = (text) => {
     setSearchText(text);
     if (suggestionTimer.current) clearTimeout(suggestionTimer.current);
@@ -229,6 +271,8 @@ export default function HomeScreen({ navigation }) {
   };
 
   const selectSuggestion = (item) => {
+    // Clear suggestions and cancel any pending timer
+    if (suggestionTimer.current) clearTimeout(suggestionTimer.current);
     setSuggestions([]);
     setSearchText(item.display_name || '');
     const lat = parseFloat(item.lat);
@@ -274,6 +318,8 @@ export default function HomeScreen({ navigation }) {
       setLocationLabel(label);
     }
     setUserInteracted(true);
+    // Save selection to history
+    try { pushHistory({ type: 'selection', label: item.formattedLabel || item.display_name, lat: parseFloat(item.lat), lon: parseFloat(item.lon) }); } catch(e){}
   };
 
   const handleDownloadWeather = () => {
@@ -301,7 +347,9 @@ export default function HomeScreen({ navigation }) {
         </MapView>
 
         <View style={styles.searchBar} pointerEvents="box-none">
-          <Image source={require('../assets/monkey.png')} style={[styles.searchAvatar, { resizeMode: 'cover' }]} />
+          <TouchableOpacity onPress={() => setProfileOpen(true)}>
+            <Image source={require('../assets/monkey.png')} style={[styles.searchAvatar, { resizeMode: 'cover' }]} />
+          </TouchableOpacity>
           <TextInput
             placeholder="Buscar"
             placeholderTextColor="#A8B6C2"
@@ -319,6 +367,10 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
           )}
         </View>
+
+        <ProfileModal visible={profileOpen} onClose={() => setProfileOpen(false)} onSelect={(id) => {
+          console.log('Profile menu select:', id);
+        }} navigation={navigation} />
 
         {address ? (
           <View style={styles.addressBubble} pointerEvents="none">
@@ -468,7 +520,7 @@ export default function HomeScreen({ navigation }) {
                   <Text style={{ color: '#CFE9FF' }}>Cancelar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => { setShowDatePicker(false); }}>
-                  <Text style={{ color: '#4A90E2' }}>Aplciar</Text>
+                  <Text style={{ color: '#4A90E2' }}>Aplicar</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -478,7 +530,7 @@ export default function HomeScreen({ navigation }) {
         {userInteracted && address ? (
           <View style={styles.bottomContainer} testID="home-bottom-container">
             <Text style={styles.cityName} numberOfLines={2} ellipsizeMode="tail">{locationLabel}</Text>
-            <Text style={styles.tempText}>18° | RealFeel 19° ☀️</Text>
+            <Text style={styles.tempText}>18° ☀️ | 💧 0%</Text>
 
             <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Forecast', { city: 'Montevideo', selectedDate: (selectedDate || new Date()).toISOString(), locationLabel })}>
               <Text style={styles.buttonText}>Ver Clima</Text>
