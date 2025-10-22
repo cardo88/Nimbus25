@@ -1,0 +1,26 @@
+{
+  "name": "nimbus25app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@react-navigation/native": "^7.1.18",
+    "@react-navigation/stack": "^7.4.10",
+    "date-fns": "^4.1.0",
+    "expo": "54.0.13",
+    "react": "19.1.0",
+    "react-native": "0.81.4",
+    "react-native-maps": "1.20.1",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0"
+  }
+}
