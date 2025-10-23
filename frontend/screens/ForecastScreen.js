@@ -41,6 +41,9 @@ export default function ForecastScreen({ navigation, route }) {
 
   const latParam = route.params?.lat ?? -34.9011;
   const lonParam = route.params?.lon ?? -56.1645;
+  const previewTemp = route.params?.previewTemp ?? null;
+  const previewRain = route.params?.previewRain ?? null;
+  const previewCondition = route.params?.previewCondition ?? null;
 
   const [forecastData, setForecastData] = useState(() => buildForecastFrom(baseDate, 5));
   const [refresh, setRefresh] = useState(false);
@@ -48,11 +51,22 @@ export default function ForecastScreen({ navigation, route }) {
 
   useEffect(() => {
     const built = buildForecastFrom(baseDate, 5);
+    if (previewTemp != null || previewRain != null || previewCondition != null) {
+      const first = { ...built[0] };
+      if (previewTemp != null) first.temp = previewTemp;
+      if (previewCondition != null) first.condition = previewCondition;
+      if (previewRain != null) {
+        first.rain = previewRain;
+        first.probability = typeof previewRain === 'number' ? previewRain / 100 : null;
+      }
+      built[0] = first;
+    }
     setForecastData(built);
 
     let mounted = true;
     console.log("🌐 BACKEND_URL =", BACKEND_URL);
     const fetchForDay = async (day) => {
+      if (day.id === 1 && (previewTemp != null || previewRain != null || previewCondition != null)) return;
       const dateStr = format(day.date, 'yyyy-MM-dd');
       console.log(`[Forecast] attempting POST ${BACKEND_URL}/probability for date ${dateStr}, lat=${latParam}, lon=${lonParam}`);
       try {
@@ -94,11 +108,10 @@ export default function ForecastScreen({ navigation, route }) {
       }
     };
 
-    // kick off requests for each built day (no await; parallel)
     built.forEach(day => fetchForDay(day));
 
     return () => { mounted = false; };
-  }, [baseDate, latParam, lonParam, refresh]); // Add refresh here
+  }, [baseDate, latParam, lonParam, refresh]); 
 
 const selectMonkeyForWeather = (temp, rain, condition) => {
   if (condition === 'rainy' || (typeof rain === 'number' && rain >= 80)) return require('../assets/monkey-lluvia.png');
@@ -106,7 +119,6 @@ const selectMonkeyForWeather = (temp, rain, condition) => {
   if (condition === 'sunny') return require('../assets/monkey-calor.png');
   if (condition === 'cloudy') return require('../assets/monkey-normal.png');
   
-  // fallback por temperatura si no hay condición
   if (temp != null) {
     if (temp <= 10) return require('../assets/monkey-frio.png');
     if (temp > 10 && temp <= 15) return require('../assets/monkey-fresco.png');
@@ -114,7 +126,6 @@ const selectMonkeyForWeather = (temp, rain, condition) => {
     return require('../assets/monkey-calor.png');
   }
 
-  // fallback default
   return require('../assets/monkey-normal.png');
 };
 

@@ -39,6 +39,9 @@ export default function HomeScreen({ navigation, route }) {
     return `${day} de ${month} de ${year}`;
   };
   const [userInteracted, setUserInteracted] = useState(false);
+  const [previewTemp, setPreviewTemp] = useState(null);
+  const [previewRain, setPreviewRain] = useState(null);
+  const [previewCondition, setPreviewCondition] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
   const [profileOpen, setProfileOpen] = useState(false);
   const suggestionTimer = useRef(null);
@@ -270,16 +273,14 @@ export default function HomeScreen({ navigation, route }) {
   const HISTORY_KEY = 'search_history';
 
   const pushHistory = async (entry) => {
-    // Send the searched location to backend /probability endpoint so it can be cached
     try {
       const API_BASE = 'http://localhost:8080';
       const body = {
         lat: entry.lat,
         lon: entry.lon,
-        // backend expects a date string in body
         date: (selectedDate || new Date()).toISOString(),
-        // optional label to store a human-friendly name
         label: entry.label || entry.formattedLabel || undefined,
+        saveHistory: true, // explicitly request server to save this entry
       };
 
       const res = await fetch(`${API_BASE}/probability`, {
@@ -293,13 +294,50 @@ export default function HomeScreen({ navigation, route }) {
         return;
       }
 
-      // we don't strictly need the response here, but we consume it to complete the request
       const data = await res.json();
-      // optional: you could use data.probability etc. to show a toast or UI update
       return data;
     } catch (e) {
       console.warn('Failed to save history to /probability', e);
     }
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    const API_BASE = 'http://localhost:8080';
+    const fetchPreview = async () => {
+      if (!userInteracted || !address) return;
+      try {
+        const dateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+        const res = await fetch(`${API_BASE}/probability`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lat: location.latitude, lon: location.longitude, date: dateStr, saveHistory: false }),
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!mounted) return;
+        const temp = json.temperature_max != null ? Math.round(json.temperature_max) : null;
+        const rain = json.probability != null ? Math.round(json.probability * 100) : null;
+        const condition = json.condition || null;
+        setPreviewTemp(temp);
+        setPreviewRain(rain);
+        setPreviewCondition(condition);
+      } catch (e) {
+        setPreviewTemp(null);
+        setPreviewRain(null);
+        setPreviewCondition(null);
+      }
+    };
+    fetchPreview();
+    return () => { mounted = false; };
+  }, [location.latitude, location.longitude, selectedDate, userInteracted, address]);
+
+  const conditionEmoji = (condition) => {
+    if (condition === 'sunny') return '☀️';
+    if (condition === 'rainy') return '🌧️';
+    if (condition === 'cloudy') return '☁️';
+    if (condition === 'windy') return '🍃';
+    return '';
   };
 
   const onChangeSearch = (text) => {
@@ -358,25 +396,10 @@ export default function HomeScreen({ navigation, route }) {
       setLocationLabel(label);
     }
     setUserInteracted(true);
-    // Save selection to history (avoid duplicates)
-    try {
-      const entry = { type: 'selection', label: item.formattedLabel || item.display_name, lat: parseFloat(item.lat), lon: parseFloat(item.lon) };
-      const dateStr = (selectedDate || new Date()).toISOString();
-      const key = `${entry.lat}|${entry.lon}|${dateStr}|${entry.label || ''}`;
-      const lastMap = lastPushedMapRef.current;
-      const now = Date.now();
-      const lastTime = lastMap.get(key) || 0;
-      if ((now - lastTime) > 5000 && !pushInProgressRef.current) {
-        pushInProgressRef.current = true;
-        await pushHistory(entry);
-        lastMap.set(key, now);
-        pushInProgressRef.current = false;
-      }
-    } catch(e){}
   };
 
   const handleDownloadWeather = () => {
-    navigation.navigate('Forecast', { city: 'Montevideo', selectedDate: (selectedDate || new Date()).toISOString(), locationLabel });
+    navigation.navigate('Forecast', { city: 'Montevideo', selectedDate: (selectedDate || new Date()).toISOString(), locationLabel, lat: location.latitude, lon: location.longitude, previewTemp, previewRain, previewCondition });
   };
 
   return (
@@ -583,9 +606,9 @@ export default function HomeScreen({ navigation, route }) {
         {userInteracted && address ? (
           <View style={styles.bottomContainer} testID="home-bottom-container">
             <Text style={styles.cityName} numberOfLines={2} ellipsizeMode="tail">{locationLabel}</Text>
-            <Text style={styles.tempText}>18° ☀️ | 💧 0%</Text>
+            <Text style={styles.tempText}>{previewTemp != null ? previewTemp + '°' : '--'} {conditionEmoji(previewCondition) || ''} | 💧 {previewRain != null ? previewRain + '%' : '--'}</Text>
 
-            <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Forecast', { city: 'Montevideo', selectedDate: (selectedDate || new Date()).toISOString(), locationLabel })}>
+            <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Forecast', { city: 'Montevideo', selectedDate: (selectedDate || new Date()).toISOString(), locationLabel, lat: location.latitude, lon: location.longitude, previewTemp, previewRain, previewCondition })}>
               <Text style={styles.buttonText}>Ver Clima</Text>
             </TouchableOpacity>
             <Text style={styles.coordsText}>Lat: {location.latitude.toFixed(4)}  Lon: {location.longitude.toFixed(4)}</Text>
