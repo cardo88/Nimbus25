@@ -32,8 +32,7 @@ export default function HistoryScreen({ navigation }) {
         const latKey = latVal !== null ? latVal.toFixed(6) : '';
         const lonKey = lonVal !== null ? lonVal.toFixed(6) : '';
         const coordKey = `${latKey}|${lonKey}`;
-        // Use 5s buckets to collapse immediate duplicates
-        const timeWindowKey = Math.round((w.ts || 0) / 5000); // bucket by 5s
+        const timeWindowKey = Math.round((w.ts || 0) / 5000); 
         const groupKey = `${coordKey}::${timeWindowKey}`;
         if (!seenCoordsTime.has(groupKey)) {
           seenCoordsTime.add(groupKey);
@@ -42,15 +41,11 @@ export default function HistoryScreen({ navigation }) {
         }
       }
 
-  // Keep up to 50 items for the UI
   const uiItems = groups.slice(0, 50);
   setItems(uiItems);
 
-  // Enrich entries without a label by reverse-geocoding their coordinates (client-side)
-  // Limit the number of concurrent lookups to avoid hammering the geocoding service.
   const toEnrich = uiItems.filter(it => !(it.label || it.formattedLabel)).slice(0, 20);
       if (toEnrich.length > 0) {
-        // perform parallel requests but update state as each result arrives so the UI shows street names progressively
         const enrichOne = async (it) => {
           const inputs = it.inputs || {};
           const lat = (inputs.lat !== undefined) ? inputs.lat : it.lat;
@@ -78,7 +73,6 @@ export default function HistoryScreen({ navigation }) {
           }
         };
 
-        // start all enrichments in parallel, updating items as each one resolves
         await Promise.all(toEnrich.map(async (it) => {
           const res = await enrichOne(it);
           if (res && res.formattedLabel) {
@@ -118,13 +112,22 @@ export default function HistoryScreen({ navigation }) {
   };
 
   const onSelect = (item) => {
+    const inputs = item.inputs || {};
+    const lat = (inputs.lat !== undefined) ? Number(inputs.lat) : (item.lat !== undefined ? Number(item.lat) : undefined);
+    const lon = (inputs.lon !== undefined) ? Number(inputs.lon) : (item.lon !== undefined ? Number(item.lon) : undefined);
+    const label = item.label || item.formattedLabel || (lat !== undefined && lon !== undefined ? `${lat.toFixed(4)}, ${lon.toFixed(4)}` : 'Sin etiqueta');
+
     Alert.alert(
       'Usar búsqueda guardada',
-      item.label || 'Sin etiqueta',
+      label,
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Ir al mapa', style: 'default', onPress: () => {
-            navigation.navigate('Home', { focusLocation: { lat: item.lat, lon: item.lon, label: item.label } });
+            if (lat === undefined || lon === undefined || isNaN(lat) || isNaN(lon)) {
+              Alert.alert('Coordenadas no disponibles', 'El elemento seleccionado no tiene coordenadas válidas para centrar el mapa.');
+              return;
+            }
+            navigation.navigate('Home', { focusLocation: { lat, lon, label } });
           } },
       ]
     );

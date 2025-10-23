@@ -214,6 +214,7 @@ const getRecommendation = (temp, rain, condition) => {
         <FlatList
           data={forecastData}
           keyExtractor={(it) => it.id.toString()}
+          contentContainerStyle={{ paddingBottom: Platform.OS === 'ios' ? 220 : 160 }}
           renderItem={({ item, index }) => (
             <TouchableOpacity style={styles.weatherCard} onPress={() => handleDayPress(item, index)}>
               <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
@@ -243,32 +244,35 @@ const getRecommendation = (temp, rain, condition) => {
               </View>
             </TouchableOpacity>
           )}
+          ListFooterComponent={() => (
+            <>
+              <Text style={[styles.detailDate, { textAlign: 'center' }]}>{format(baseDate, "EEEE, d 'de' MMMM", { locale: es })}</Text>
+
+              <View style={[styles.detailBox, { flexDirection: 'row', alignItems: 'center', marginTop: 8 }]}>
+                <View style={{ width: 120, height: 120, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                  <Image
+                    source={selectMonkeyForWeather(
+                      forecastData[0]?.temp ?? 18,
+                      forecastData[0]?.rain ?? 0,
+                      forecastData[0]?.condition
+                    )}
+                    style={styles.monkeyIcon}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#CFE9FF', fontWeight: '600', marginBottom: 6 }}>Recomendación:</Text>
+                  <Text style={styles.recommendationText}>
+                    {getRecommendation(
+                      forecastData[0]?.temp ?? 18,
+                      forecastData[0]?.rain ?? 0,
+                      forecastData[0]?.condition
+                    )}
+                  </Text>
+                </View>
+              </View>
+            </>
+          )}
         />
-
-        <Text style={[styles.detailDate, { textAlign: 'center' }]}>{format(baseDate, "EEEE, d 'de' MMMM", { locale: es })}</Text>
-
-        <View style={[styles.detailBox, { flexDirection: 'row', alignItems: 'center' }]}>
-          <View style={{ width: 120, height: 120, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-            <Image
-              source={selectMonkeyForWeather(
-                forecastData[0]?.temp ?? 18,
-                forecastData[0]?.rain ?? 0,
-                forecastData[0]?.condition
-              )}
-              style={styles.monkeyIcon}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: '#CFE9FF', fontWeight: '600', marginBottom: 6 }}>Recomendación:</Text>
-              <Text style={styles.recommendationText}>
-                {getRecommendation(
-                  forecastData[0]?.temp ?? 18,
-                  forecastData[0]?.rain ?? 0,
-                  forecastData[0]?.condition
-                )}
-              </Text>
-          </View>
-        </View>
 
         <View style={{ position: 'absolute', left: 16, right: 16, bottom: Platform.OS === 'ios' ? 20 : 12, alignItems: 'center' }} pointerEvents="box-none">
           <TouchableOpacity style={[styles.button, { borderRadius: 28, paddingVertical: 14, width: '100%' }]} onPress={() => setDownloadModalVisible(true)}>
