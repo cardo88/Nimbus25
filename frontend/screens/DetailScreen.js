@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView, FlatList, Image, Dimensions, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, SafeAreaView, FlatList, Image, Dimensions, Platform, Modal, Alert } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import styles from '../styles/Detail';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -8,6 +10,7 @@ export default function DetailScreen({ route, navigation }) {
   const { forecastData = [], selectedIndex = 0, locationLabel } = route.params || {};
   const safeIndex = Math.max(0, Math.min(selectedIndex, (forecastData.length || 1) - 1));
   const [activeIndex, setActiveIndex] = useState(safeIndex);
+  const [downloadModalVisible, setDownloadModalVisible] = useState(false);
   const listRef = useRef(null);
 
   useEffect(() => {
@@ -35,13 +38,23 @@ export default function DetailScreen({ route, navigation }) {
     return padded;
   })();
 
-  const selectMonkeyForWeather = (temp, rain) => {
-    if (rain >= 80) return require('../assets/monkey-lluvia.png');
+  const selectMonkeyForWeather = (temp, rain, condition) => {
+  if (condition === 'rainy' || (typeof rain === 'number' && rain >= 80)) return require('../assets/monkey-lluvia.png');
+  if (condition === 'windy') return require('../assets/monkey-ventoso.png');
+  if (condition === 'sunny') return require('../assets/monkey-calor.png');
+  if (condition === 'cloudy') return require('../assets/monkey-normal.png');
+
+  // fallback por temperatura
+  if (temp != null) {
     if (temp <= 10) return require('../assets/monkey-frio.png');
     if (temp > 10 && temp <= 15) return require('../assets/monkey-fresco.png');
     if (temp > 15 && temp <= 20) return require('../assets/monkey-normal.png');
     return require('../assets/monkey-calor.png');
-  };
+  }
+
+  return require('../assets/monkey-normal.png');
+};
+
 
   const activeDay = useMemo(() => forecastData[activeIndex] || {}, [forecastData, activeIndex]);
 
@@ -55,6 +68,52 @@ export default function DetailScreen({ route, navigation }) {
         </View>
       </TouchableOpacity>
     );
+  };
+
+  // Utilidad para exportar a CSV
+  const toCSV = (obj) => {
+    const keys = Object.keys(obj);
+    const values = keys.map(k => obj[k]);
+    return keys.join(',') + '\n' + values.join(',');
+  };
+
+  // Utilidad para exportar a JSON
+  const toJSON = (obj) => JSON.stringify(obj, null, 2);
+
+  // Maneja la descarga y compartir
+  const handleDownload = async (format) => {
+    try {
+      let content = '';
+      let ext = '';
+      if (format === 'csv') {
+        content = toCSV(activeDay);
+        ext = 'csv';
+      } else {
+        content = toJSON(activeDay);
+        ext = 'json';
+      }
+      const fileName = `clima_${format}_${Date.now()}.${ext}`;
+      const fileUri = FileSystem.documentDirectory + fileName;
+      await FileSystem.writeAsStringAsync(fileUri, content, { encoding: FileSystem.EncodingType.UTF8 });
+      
+      if (Platform.OS === 'ios' || Platform.OS === 'android') {
+        // En iOS/Android, shareAsync permite guardar o compartir el archivo
+        const shareAvailable = await Sharing.isAvailableAsync();
+        if (shareAvailable) {
+          await Sharing.shareAsync(fileUri, { 
+            mimeType: format === 'csv' ? 'text/csv' : 'application/json',
+            dialogTitle: 'Guardar archivo de clima',
+            UTI: format === 'csv' ? 'public.comma-separated-values-text' : 'public.json'
+          });
+          Alert.alert('Descarga completa', `Archivo ${fileName} guardado exitosamente.`);
+        } else {
+          Alert.alert('Error', 'No se puede compartir archivos en este dispositivo.');
+        }
+      }
+    } catch (e) {
+      Alert.alert('Error al descargar', e.message);
+    }
+    setDownloadModalVisible(false);
   };
 
   return (
@@ -82,15 +141,34 @@ export default function DetailScreen({ route, navigation }) {
           <Text style={[styles.detailDate, { textAlign: 'center' }]}>{format(activeDay.date || new Date(), "EEEE, d 'de' MMMM", { locale: es })}</Text>
 
           <View style={[styles.detailBox, { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }]}> 
-            <View style={{ width: 84, alignItems: 'center' }}>
-              {activeDay.temp !== undefined ? <Image source={selectMonkeyForWeather(activeDay.temp, activeDay.rain || 0)} style={[styles.monkeyIcon, { width: 84, height: 84 }]} /> : null}
-            </View>
-            <View style={{ flex: 1, paddingLeft: 12 }}>
-              <Text style={{ color: '#CFE9FF', fontWeight: '600', marginBottom: 6 }}>Recomendación:</Text>
-              <Text style={styles.recommendationText}>{activeDay.recommendation || 'Go out with some warm clothing.'}</Text>
-              <Text style={[styles.recommendationText, { marginTop: 6 }]}>{activeDay.recommendation2 || 'The day is a bit windy and without solar heat.'}</Text>
-            </View>
-          </View>
+        <View style={{ width: 84, alignItems: 'center' }}>
+          {activeDay.temp !== undefined ? (
+            <Image
+              source={selectMonkeyForWeather(
+                activeDay.temp,
+                activeDay.rain || 0,
+                activeDay.condition
+              )}
+              style={[styles.monkeyIcon, { width: 84, height: 84 }]}
+            />
+          ) : null}
+
+          <Text style={{ color: '#CFE9FF', textAlign: 'center', marginTop: 6 }}>
+            {activeDay.condition ? activeDay.condition.toUpperCase() : '—'}
+          </Text>
+        </View>
+
+        <View style={{ flex: 1, paddingLeft: 12 }}>
+          <Text style={{ color: '#CFE9FF', fontWeight: '600', marginBottom: 6 }}>Recomendación:</Text>
+          <Text style={styles.recommendationText}>
+            {activeDay.recommendation || 'Go out with some warm clothing.'}
+          </Text>
+          <Text style={[styles.recommendationText, { marginTop: 6 }]}>
+            {activeDay.recommendation2 || 'The day is a bit windy and without solar heat.'}
+          </Text>
+        </View>
+      </View>
+
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
@@ -119,17 +197,39 @@ export default function DetailScreen({ route, navigation }) {
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
             <Text style={{ fontSize: 32, color: '#9EC3FF', marginRight: 10 }}>💧</Text>
             <Text style={{ color: '#CFE9FF', fontWeight: '600' }}>{activeDay.rain || 0}%</Text>
-            <Text style={{ color: '#CFE9FF', marginLeft: 8 }}>Chances de presipitación</Text>
+            <Text style={{ color: '#CFE9FF', marginLeft: 8 }}>Probabilidad de precipitación</Text>
           </View>
 
           <View style={{ height: Platform.OS === 'ios' ? 90 : 80 }} />
         </View>
       </View>
       <View style={{ position: 'absolute', left: 16, right: 16, bottom: Platform.OS === 'ios' ? 20 : 12, alignItems: 'center' }} pointerEvents="box-none">
-        <TouchableOpacity style={[styles.button, { borderRadius: 28, paddingVertical: 14, width: '100%' }]} onPress={() => { }}>
-          <Text style={[styles.buttonText, { color: '#0F2B3A' }]}>Download Weather</Text>
+        <TouchableOpacity style={[styles.button, { borderRadius: 28, paddingVertical: 14, width: '100%' }]} onPress={() => setDownloadModalVisible(true)}>
+          <Text style={[styles.buttonText, { color: '#0F2B3A' }]}>Descargar Clima</Text>
         </TouchableOpacity>
       </View>
+      {/* Modal para elegir formato */}
+      <Modal
+        visible={downloadModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDownloadModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, minWidth: 220, alignItems: 'center' }}>
+            <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 18, color: '#0F2B3A' }}>Elegí el formato</Text>
+            <TouchableOpacity style={{ marginBottom: 12, backgroundColor: '#4A90E2', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24 }} onPress={() => handleDownload('csv')}>
+              <Text style={{ color: '#fff', fontWeight: '600' }}>CSV</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={{ marginBottom: 8, backgroundColor: '#0F2B3A', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24 }} onPress={() => handleDownload('json')}>
+              <Text style={{ color: '#CFE9FF', fontWeight: '600' }}>JSON</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={{ marginTop: 10 }} onPress={() => setDownloadModalVisible(false)}>
+              <Text style={{ color: '#4A90E2', fontWeight: '600' }}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

@@ -90,6 +90,8 @@ docs/**/*.pptx
 !docs/**/*.md
 
 # ===================================
+# EXPO / REACT NATIVE (Nimbus25App)
+# ===================================
 # 8) MOBILE APP - ESPECÍFICO (carpeta del app: Nimbus25App)
 # ===================================
 # Node / Expo (app-level)
@@ -97,13 +99,13 @@ Nimbus25App/node_modules/
 Nimbus25App/.expo/
 Nimbus25App/.expo-shared/
 
-# iOS build / CocoaPods (generados en la app)
+# iOS build / CocoaPods artifacts
 Nimbus25App/ios/Pods/
 Nimbus25App/ios/build/
 Nimbus25App/ios/*.xcworkspace/
 Nimbus25App/ios/Pods.xcodeproj/
 
-# Android build (generados en la app)
+# Android build artifacts(generados en la app)
 Nimbus25App/android/.gradle/
 Nimbus25App/android/app/build/
 
