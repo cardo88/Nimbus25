@@ -32,10 +32,6 @@ export default function ForecastScreen({ navigation, route }) {
     try { return selectedDateIso ? parseISO(selectedDateIso) : new Date(); } catch (e) { return new Date(); }
   }, [selectedDateIso]);
 
-  // BACKEND_URL resolution for Expo:
-  // - If route.params.backendHost provided, use it
-  // - else try to extract IP from Expo debuggerHost (works when running via Expo devtools)
-  // - fallback to localhost
   const hostFromDebug = Constants.manifest?.debuggerHost?.split(':')[0] ?? null;
   const debuggerHost = Constants.manifest?.debuggerHost ?? Constants.expoConfig?.hostUri;
   const hostIP = debuggerHost?.split(':')[0] ?? 'localhost';
@@ -48,7 +44,6 @@ export default function ForecastScreen({ navigation, route }) {
   const [forecastData, setForecastData] = useState(() => buildForecastFrom(baseDate, 5));
   const [refresh, setRefresh] = useState(false);
 
-  // rebuild initial days whenever baseDate changes, then fetch backend probabilities
   useEffect(() => {
     const built = buildForecastFrom(baseDate, 5);
     setForecastData(built);
@@ -105,7 +100,7 @@ export default function ForecastScreen({ navigation, route }) {
 
 const selectMonkeyForWeather = (temp, rain, condition) => {
   if (condition === 'rainy' || (typeof rain === 'number' && rain >= 80)) return require('../assets/monkey-lluvia.png');
-  //if (condition === 'windy') return require('../assets/monkey-viento.png');
+  if (condition === 'windy') return require('../assets/monkey-ventoso.png');
   if (condition === 'sunny') return require('../assets/monkey-calor.png');
   if (condition === 'cloudy') return require('../assets/monkey-normal.png');
   

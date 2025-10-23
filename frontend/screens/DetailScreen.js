@@ -35,13 +35,23 @@ export default function DetailScreen({ route, navigation }) {
     return padded;
   })();
 
-  const selectMonkeyForWeather = (temp, rain) => {
-    if (rain >= 80) return require('../assets/monkey-lluvia.png');
+  const selectMonkeyForWeather = (temp, rain, condition) => {
+  if (condition === 'rainy' || (typeof rain === 'number' && rain >= 80)) return require('../assets/monkey-lluvia.png');
+  if (condition === 'windy') return require('../assets/monkey-ventoso.png');
+  if (condition === 'sunny') return require('../assets/monkey-calor.png');
+  if (condition === 'cloudy') return require('../assets/monkey-normal.png');
+
+  // fallback por temperatura
+  if (temp != null) {
     if (temp <= 10) return require('../assets/monkey-frio.png');
     if (temp > 10 && temp <= 15) return require('../assets/monkey-fresco.png');
     if (temp > 15 && temp <= 20) return require('../assets/monkey-normal.png');
     return require('../assets/monkey-calor.png');
-  };
+  }
+
+  return require('../assets/monkey-normal.png');
+};
+
 
   const activeDay = useMemo(() => forecastData[activeIndex] || {}, [forecastData, activeIndex]);
 
@@ -82,15 +92,34 @@ export default function DetailScreen({ route, navigation }) {
           <Text style={[styles.detailDate, { textAlign: 'center' }]}>{format(activeDay.date || new Date(), "EEEE, d 'de' MMMM", { locale: es })}</Text>
 
           <View style={[styles.detailBox, { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }]}> 
-            <View style={{ width: 84, alignItems: 'center' }}>
-              {activeDay.temp !== undefined ? <Image source={selectMonkeyForWeather(activeDay.temp, activeDay.rain || 0)} style={[styles.monkeyIcon, { width: 84, height: 84 }]} /> : null}
-            </View>
-            <View style={{ flex: 1, paddingLeft: 12 }}>
-              <Text style={{ color: '#CFE9FF', fontWeight: '600', marginBottom: 6 }}>Recomendación:</Text>
-              <Text style={styles.recommendationText}>{activeDay.recommendation || 'Go out with some warm clothing.'}</Text>
-              <Text style={[styles.recommendationText, { marginTop: 6 }]}>{activeDay.recommendation2 || 'The day is a bit windy and without solar heat.'}</Text>
-            </View>
-          </View>
+        <View style={{ width: 84, alignItems: 'center' }}>
+          {activeDay.temp !== undefined ? (
+            <Image
+              source={selectMonkeyForWeather(
+                activeDay.temp,
+                activeDay.rain || 0,
+                activeDay.condition
+              )}
+              style={[styles.monkeyIcon, { width: 84, height: 84 }]}
+            />
+          ) : null}
+
+          <Text style={{ color: '#CFE9FF', textAlign: 'center', marginTop: 6 }}>
+            {activeDay.condition ? activeDay.condition.toUpperCase() : '—'}
+          </Text>
+        </View>
+
+        <View style={{ flex: 1, paddingLeft: 12 }}>
+          <Text style={{ color: '#CFE9FF', fontWeight: '600', marginBottom: 6 }}>Recomendación:</Text>
+          <Text style={styles.recommendationText}>
+            {activeDay.recommendation || 'Go out with some warm clothing.'}
+          </Text>
+          <Text style={[styles.recommendationText, { marginTop: 6 }]}>
+            {activeDay.recommendation2 || 'The day is a bit windy and without solar heat.'}
+          </Text>
+        </View>
+      </View>
+
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
@@ -119,7 +148,7 @@ export default function DetailScreen({ route, navigation }) {
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
             <Text style={{ fontSize: 32, color: '#9EC3FF', marginRight: 10 }}>💧</Text>
             <Text style={{ color: '#CFE9FF', fontWeight: '600' }}>{activeDay.rain || 0}%</Text>
-            <Text style={{ color: '#CFE9FF', marginLeft: 8 }}>Chances de presipitación</Text>
+            <Text style={{ color: '#CFE9FF', marginLeft: 8 }}>Chances de precipitación</Text>
           </View>
 
           <View style={{ height: Platform.OS === 'ios' ? 90 : 80 }} />
