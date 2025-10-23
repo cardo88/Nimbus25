@@ -1,8 +1,8 @@
 export const getHistory = async (req, res) => {
     try {
         const redis = req.redis;
-        const username = req.user?.preferred_username || "unknown";
-        const key = `history:${username}`;
+        const ip = req.ip || "unknown";
+        const key = `history:${ip}`;
 
         if (!redis) {
             return res.status(503).json({ error: "Redis no disponible" });
@@ -12,7 +12,7 @@ export const getHistory = async (req, res) => {
         const history = data ? JSON.parse(data) : [];
 
         res.json({
-            user: username,
+            user: ip,
             count: history.length,
             history,
             source: "redis",

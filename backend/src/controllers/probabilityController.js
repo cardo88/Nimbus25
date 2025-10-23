@@ -23,8 +23,8 @@ export const getProbability = async (req, res) => {
 
         // Guardar historial en Redis
         if (redis) {
-            const username = req.user?.preferred_username || "unknown";
-            const key = `history:${username}`;
+            const ip = req.ip || "unknown";
+            const key = `history:${ip}`;
             const existing = await redis.get(key);
             const history = existing ? JSON.parse(existing) : [];
 
@@ -33,7 +33,7 @@ export const getProbability = async (req, res) => {
             // Limitamos a las 5 más recientes
             const trimmed = history.slice(0, 5);
 
-            await redis.set(key, JSON.stringify(trimmed), "EX", 3600);
+            await redis.set(key, JSON.stringify(trimmed), "EX", 3600); // expira en 1h
         }
 
         res.json(responseData);
