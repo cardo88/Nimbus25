@@ -9,7 +9,7 @@ app.use(express.json());
 
 // Configuración Keycloak
 const realm = "nimbus";
-const issuer = `http://keycloak-keycloak-1:7080/realms/${realm}`;
+const issuer = `http://localhost:7080/realms/${realm}`;
 const JWKS = createRemoteJWKSet(new URL(`${issuer}/protocol/openid-connect/certs`));
 
 // Middleware para validar token

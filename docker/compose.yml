@@ -66,8 +66,55 @@ services:
     networks:
       - nimbus25-network
 
+  postgres:
+      image: postgres:latest
+      environment:
+        POSTGRES_DB: ${POSTGRES_DB}
+        POSTGRES_USER: ${POSTGRES_USER}
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      ports:
+        - "${POSTGRES_PORT}:5432"
+      volumes:
+        - postgres-data:/var/lib/postgresql
+      networks:
+        - nimbus25-network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.5
+    volumes:
+      - ../backend/keycloak/keycloak-themes/src/themes:/opt/keycloak/themes
+      - ../backend/keycloak/keycloak-export:/opt/keycloak/data/import
+    environment:
+      KC_DB: ${KC_DB}
+      KC_DB_URL: ${KC_DB_URL}
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_HOSTNAME: ${KC_HOSTNAME}
+      KC_HOSTNAME_STRICT_HTTPS: ${KC_HOSTNAME_STRICT_HTTPS}
+      KC_HOSTNAME_STRICT_BACKCHANNEL: ${KC_HOSTNAME_STRICT_BACKCHANNEL}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HEALTH_ENABLED: ${KC_HEALTH_ENABLED}
+      KC_LOG_LEVEL: ${KC_LOG_LEVEL}
+    command:
+      [
+        "start-dev",
+        "--http-port", "7080",
+        "--https-port", "7443",
+        "--import-realm",
+        "--spi-theme-static-max-age=-1",
+        "--spi-theme-cache-themes=false",
+        "--spi-theme-cache-templates=false"
+      ]
+    ports:
+      - "${KC_PORT_PLAIN}:7080"
+      - "${KC_PORT_SEC}:7443"
+    networks:
+      - nimbus25-network
+
 volumes:
   redis-data:
+  postgres-data:
 
 networks:
   nimbus25-network:
