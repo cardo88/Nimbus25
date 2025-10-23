@@ -33,7 +33,7 @@ export default function DetailScreen({ route, navigation }) {
     if (arr.length >= fixedCount) return arr.slice(0, fixedCount);
     const padded = arr.slice();
     while (padded.length < fixedCount) {
-      padded.push({ id: `pad-${padded.length}`, date: null, dayNumber: '', weekdayShort: '', temp: undefined, realFeel: undefined, icon: null, rain: 0 });
+      padded.push({ id: `pad-${padded.length}`, date: null, dayNumber: '', weekdayShort: '', temp: undefined, icon: null, rain: 0 });
     }
     return padded;
   })();
@@ -185,10 +185,6 @@ export default function DetailScreen({ route, navigation }) {
                     );
                   })()}
               </View>
-            </View>
-
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: '#CFE9FF', fontSize: 14 }}>{activeDay.realFeel !== undefined ? `${activeDay.realFeel}° RealFeel` : ''}</Text>
             </View>
           </View>
 

@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, SafeAreaView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, SafeAreaView, Platform, Modal, Alert } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import styles from '../styles';
 import { format, addDays, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -16,7 +18,6 @@ function buildForecastFrom(startDate, count = 5) {
       weekdayShort: format(d, 'EEE', { locale: es }),
 
       temp: null,
-      realFeel: null,
       icon: null,
       rain: null,
       probability: null,
@@ -43,6 +44,7 @@ export default function ForecastScreen({ navigation, route }) {
 
   const [forecastData, setForecastData] = useState(() => buildForecastFrom(baseDate, 5));
   const [refresh, setRefresh] = useState(false);
+  const [downloadModalVisible, setDownloadModalVisible] = useState(false);
 
   useEffect(() => {
     const built = buildForecastFrom(baseDate, 5);
@@ -122,6 +124,49 @@ const selectMonkeyForWeather = (temp, rain, condition) => {
     navigation.navigate('Details', { forecastData, selectedIndex: index, locationLabel });
   };
 
+  // Maneja la descarga y compartir (similar a DetailScreen)
+  const toCSV = (obj) => {
+    const keys = Object.keys(obj);
+    const values = keys.map(k => obj[k]);
+    return keys.join(',') + '\n' + values.join(',');
+  };
+  const toJSON = (obj) => JSON.stringify(obj, null, 2);
+
+  const handleDownload = async (format) => {
+    try {
+      const activeDay = forecastData[0] || {};
+      let content = '';
+      let ext = '';
+      if (format === 'csv') {
+        content = toCSV(activeDay);
+        ext = 'csv';
+      } else {
+        content = toJSON(activeDay);
+        ext = 'json';
+      }
+      const fileName = `clima_${format}_${Date.now()}.${ext}`;
+      const fileUri = FileSystem.documentDirectory + fileName;
+      await FileSystem.writeAsStringAsync(fileUri, content, { encoding: FileSystem.EncodingType.UTF8 });
+
+      if (Platform.OS === 'ios' || Platform.OS === 'android') {
+        const shareAvailable = await Sharing.isAvailableAsync();
+        if (shareAvailable) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: format === 'csv' ? 'text/csv' : 'application/json',
+            dialogTitle: 'Guardar archivo de clima',
+            UTI: format === 'csv' ? 'public.comma-separated-values-text' : 'public.json'
+          });
+          Alert.alert('Descarga completa', `Archivo ${fileName} guardado exitosamente.`);
+        } else {
+          Alert.alert('Error', 'No se puede compartir archivos en este dispositivo.');
+        }
+      }
+    } catch (e) {
+      Alert.alert('Error al descargar', e.message);
+    }
+    setDownloadModalVisible(false);
+  };
+
 const getRecommendation = (temp, rain, condition) => {
   if (condition === 'rainy' || (typeof rain === 'number' && rain >= 80)) {
     return 'Lleva paraguas o impermeable, se espera lluvia intensa.';
@@ -166,7 +211,7 @@ const getRecommendation = (temp, rain, condition) => {
                   <Text style={{ color: '#CFE9FF', fontWeight: '700', fontSize: 16 }}>{item.dayNumber}</Text>
                 </View>
 
-                <View style={{ width: 40, alignItems: 'center' }}>
+                <View style={{ width: 120, alignItems: 'center' }}>
                   <Text style={{ fontSize: 22 }}>
                     { item.condition === 'sunny' ? '☀️' :
                       item.condition === 'rainy' ? '🌧️' :
@@ -177,15 +222,11 @@ const getRecommendation = (temp, rain, condition) => {
                   </Text>
                 </View>
 
-                <View style={{ flex: 1, alignItems: 'center' }}>
+                <View style={{ width: 70, alignItems: 'center' }}>
                   <Text style={{ color: '#FFF', fontSize: 18 }}>{item.temp != null ? item.temp + '°' : '--'}</Text>
                 </View>
 
-                <View style={{ width: 110, alignItems: 'center' }}>
-                  <Text style={{ color: '#CFE3FF', fontSize: 12 }}>{item.realFeel != null ? item.realFeel + '° RealFeel' : '--'}</Text>
-                </View>
-
-                <View style={{ width: 50, alignItems: 'center' }}>
+                <View style={{ width: 120, alignItems: 'center' }}>
                   <Text style={{ color: '#9EC3FF' }}>💧{item.rain != null ? item.rain + '%' : '--'}</Text>
                 </View>
               </View>
@@ -218,10 +259,33 @@ const getRecommendation = (temp, rain, condition) => {
           </View>
         </View>
 
-        <TouchableOpacity style={[styles.button, { borderRadius: 28, paddingVertical: 14, marginTop: 10 }]} onPress={() => { }}>
-          <Text style={[styles.buttonText, { color: '#0F2B3A' }]}>Descargar clima</Text>
-        </TouchableOpacity>
-
+        <View style={{ position: 'absolute', left: 16, right: 16, bottom: Platform.OS === 'ios' ? 20 : 12, alignItems: 'center' }} pointerEvents="box-none">
+          <TouchableOpacity style={[styles.button, { borderRadius: 28, paddingVertical: 14, width: '100%' }]} onPress={() => setDownloadModalVisible(true)}>
+            <Text style={[styles.buttonText, { color: '#0F2B3A' }]}>Descargar Clima</Text>
+          </TouchableOpacity>
+        </View>
+        {/* Modal para elegir formato */}
+        <Modal
+          visible={downloadModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setDownloadModalVisible(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, minWidth: 220, alignItems: 'center' }}>
+              <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 18, color: '#0F2B3A' }}>Elegí el formato</Text>
+              <TouchableOpacity style={{ marginBottom: 12, backgroundColor: '#4A90E2', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24 }} onPress={() => handleDownload('csv')}>
+                <Text style={{ color: '#fff', fontWeight: '600' }}>CSV</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{ marginBottom: 8, backgroundColor: '#0F2B3A', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24 }} onPress={() => handleDownload('json')}>
+                <Text style={{ color: '#CFE9FF', fontWeight: '600' }}>JSON</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{ marginTop: 10 }} onPress={() => setDownloadModalVisible(false)}>
+                <Text style={{ color: '#4A90E2', fontWeight: '600' }}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
     </SafeAreaView>
   );
