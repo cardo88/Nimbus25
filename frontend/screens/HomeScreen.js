@@ -42,6 +42,9 @@ export default function HomeScreen({ navigation, route }) {
   const [suggestions, setSuggestions] = useState([]);
   const [profileOpen, setProfileOpen] = useState(false);
   const suggestionTimer = useRef(null);
+  // track last push time per key so we only debounce immediate duplicates
+  const lastPushedMapRef = useRef(new Map());
+  const pushInProgressRef = useRef(false);
 
   useEffect(() => {
     console.log('HomeScreen mounted');
@@ -196,8 +199,24 @@ export default function HomeScreen({ navigation, route }) {
           else setLocationLabel(top.display_name);
         }
         setUserInteracted(true);
-        // Save to history using top result
-        try { pushHistory({ type: 'search', label: top.display_name || query, lat, lon }); } catch(e){}
+        // Save to history using top result (avoid duplicate saves for the same search)
+        try {
+          const entry = { type: 'search', label: top.display_name || query, lat, lon };
+          const dateStr = (selectedDate || new Date()).toISOString();
+          const key = `${lat}|${lon}|${dateStr}|${entry.label || ''}`;
+          try {
+            const lastMap = lastPushedMapRef.current;
+            const now = Date.now();
+            const lastTime = lastMap.get(key) || 0;
+            // allow if last push was more than 5s ago
+            if ((now - lastTime) > 5000 && !pushInProgressRef.current) {
+              pushInProgressRef.current = true;
+              await pushHistory(entry);
+              lastMap.set(key, now);
+              pushInProgressRef.current = false;
+            }
+          } catch (e) {}
+        } catch(e){}
       } else {
         setAddress('No results');
       }
@@ -251,14 +270,35 @@ export default function HomeScreen({ navigation, route }) {
   const HISTORY_KEY = 'search_history';
 
   const pushHistory = async (entry) => {
+    // Send the searched location to backend /probability endpoint so it can be cached
     try {
-      await fetch('https://tu-backend.com/api/cache', {
+      const API_BASE = 'http://localhost:8080';
+      const body = {
+        lat: entry.lat,
+        lon: entry.lon,
+        // backend expects a date string in body
+        date: (selectedDate || new Date()).toISOString(),
+        // optional label to store a human-friendly name
+        label: entry.label || entry.formattedLabel || undefined,
+      };
+
+      const res = await fetch(`${API_BASE}/probability`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(entry)
+        body: JSON.stringify(body),
       });
+
+      if (!res.ok) {
+        console.warn('Failed to POST /probability', res.status);
+        return;
+      }
+
+      // we don't strictly need the response here, but we consume it to complete the request
+      const data = await res.json();
+      // optional: you could use data.probability etc. to show a toast or UI update
+      return data;
     } catch (e) {
-      console.warn('Failed to save history', e);
+      console.warn('Failed to save history to /probability', e);
     }
   };
 
@@ -270,7 +310,7 @@ export default function HomeScreen({ navigation, route }) {
     }, 350);
   };
 
-  const selectSuggestion = (item) => {
+  const selectSuggestion = async (item) => {
     // Clear suggestions and cancel any pending timer
     if (suggestionTimer.current) clearTimeout(suggestionTimer.current);
     setSuggestions([]);
@@ -318,8 +358,21 @@ export default function HomeScreen({ navigation, route }) {
       setLocationLabel(label);
     }
     setUserInteracted(true);
-    // Save selection to history
-    try { pushHistory({ type: 'selection', label: item.formattedLabel || item.display_name, lat: parseFloat(item.lat), lon: parseFloat(item.lon) }); } catch(e){}
+    // Save selection to history (avoid duplicates)
+    try {
+      const entry = { type: 'selection', label: item.formattedLabel || item.display_name, lat: parseFloat(item.lat), lon: parseFloat(item.lon) };
+      const dateStr = (selectedDate || new Date()).toISOString();
+      const key = `${entry.lat}|${entry.lon}|${dateStr}|${entry.label || ''}`;
+      const lastMap = lastPushedMapRef.current;
+      const now = Date.now();
+      const lastTime = lastMap.get(key) || 0;
+      if ((now - lastTime) > 5000 && !pushInProgressRef.current) {
+        pushInProgressRef.current = true;
+        await pushHistory(entry);
+        lastMap.set(key, now);
+        pushInProgressRef.current = false;
+      }
+    } catch(e){}
   };
 
   const handleDownloadWeather = () => {
