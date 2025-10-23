@@ -14,7 +14,7 @@ function buildForecastFrom(startDate, count = 5) {
       date: d,
       dayNumber: format(d, 'dd', { locale: es }),
       weekdayShort: format(d, 'EEE', { locale: es }),
-      // no more placeholders
+
       temp: null,
       realFeel: null,
       icon: null,
@@ -219,7 +219,7 @@ const getRecommendation = (temp, rain, condition) => {
         </View>
 
         <TouchableOpacity style={[styles.button, { borderRadius: 28, paddingVertical: 14, marginTop: 10 }]} onPress={() => { }}>
-          <Text style={[styles.buttonText, { color: '#0F2B3A' }]}>Download Weather</Text>
+          <Text style={[styles.buttonText, { color: '#0F2B3A' }]}>Descargar clima</Text>
         </TouchableOpacity>
 
       </View>

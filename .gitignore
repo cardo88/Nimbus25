@@ -1,13 +1,17 @@
 # ===================================
-# GENERALES
+# PROYECTO NIMBUS25 - .gitignore consolidado
+# ===================================
+
+# ===================================
+# 1) GENERALES / SISTEMA
 # ===================================
 # Entornos y configuración sensible
 .env
 .env.local
 .env.*.local
-!/.env.example      # mantener el ejemplo versionado
+!/.env.example
 
-# Archivos del sistema
+# Archivos del sistema (macOS / Windows / temporales comunes)
 .DS_Store
 Thumbs.db
 *.swp
@@ -18,7 +22,9 @@ Thumbs.db
 *.seed
 *.out
 
-# Logs y reportes
+# ===================================
+# 2) LOGS Y REPORTES
+# ===================================
 logs/
 *.log
 npm-debug.log*
@@ -27,7 +33,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # ===================================
-# NODE (backend / frontend)
+# 3) NODE (backend / frontend web)
 # ===================================
 node_modules/
 dist/
@@ -40,7 +46,7 @@ out/
 *.tsbuildinfo
 
 # ===================================
-# DOCKER
+# 4) DOCKER
 # ===================================
 # Archivos generados por compose
 docker/compose.log
@@ -54,15 +60,18 @@ tmp/
 *.sock
 
 # ===================================
-# IDEs y EDITORES
+# 5) IDEs Y EDITORES
 # ===================================
 .vscode/
 .idea/
 *.iml
 *.code-workspace
+.DS_Store
+.vscode/
+*.log
 
 # ===================================
-# TESTS / CI
+# 6) TESTS / CI
 # ===================================
 coverage/
 reports/
@@ -72,7 +81,7 @@ test-output/
 *.junit.xml
 
 # ===================================
-# DOCUMENTACIÓN / EXPORTS
+# 7) DOCUMENTACIÓN / EXPORTS
 # ===================================
 docs/**/*.pdf
 docs/**/*.zip
@@ -83,6 +92,9 @@ docs/**/*.pptx
 # ===================================
 # EXPO / REACT NATIVE (Nimbus25App)
 # ===================================
+# 8) MOBILE APP - ESPECÍFICO (carpeta del app: Nimbus25App)
+# ===================================
+# Node / Expo (app-level)
 Nimbus25App/node_modules/
 Nimbus25App/.expo/
 Nimbus25App/.expo-shared/
@@ -93,6 +105,41 @@ Nimbus25App/ios/build/
 Nimbus25App/ios/*.xcworkspace/
 Nimbus25App/ios/Pods.xcodeproj/
 
-# Android build artifacts
+# Android build artifacts(generados en la app)
 Nimbus25App/android/.gradle/
 Nimbus25App/android/app/build/
+
+# ===================================
+# 9) MOBILE APP - GENÉRICO (para proyectos React Native / Expo en raíz)
+# ===================================
+# Dependencias (duplicado intencional para conservar entradas originales)
+node_modules/
+
+# Expo (raíz)
+.expo/
+.expo-shared/
+
+# Artefactos de build Android (raíz)
+android/.gradle/
+android/app/build/
+
+# Artefactos de build iOS (raíz)
+ios/build/
+
+# CocoaPods (raíz)
+ios/Pods/
+ios/Pods.xcodeproj/
+ios/*.xcworkspace/
+
+# Misceláneos (raíz)
+.DS_Store
+*.log
+.vscode/
+
+# CocoaPods (líneas repetidas a pedido: conservar)
+ios/Pods/
+ios/Pods.xcodeproj/
+
+# CocoaPods (repetición adicional a pedido: conservar)
+ios/Pods/
+ios/Pods.xcodeproj/
