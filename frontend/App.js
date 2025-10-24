@@ -13,11 +13,11 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-  <Stack.Screen name="Home" component={HomeScreen} />
-  <Stack.Screen name="Forecast" component={ForecastScreen} />
-  <Stack.Screen name="Details" component={DetailScreen} />
-  <Stack.Screen name="History" component={HistoryScreen} />
-  <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Forecast" component={ForecastScreen} />
+        <Stack.Screen name="Details" component={DetailScreen} />
+        <Stack.Screen name="History" component={HistoryScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

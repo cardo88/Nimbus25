@@ -6,30 +6,28 @@ services:
     container_name: nimbus25-cache
     ports:
       - "6379:6379"
-    volumes:
-      - redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 2s
       retries: 20
-    networks:
-      - nimbus25-network
 
   backend:
     build:
       context: ../backend
       dockerfile: Dockerfile
     container_name: nimbus25-backend
-    env_file: ../.env
+    env_file: ./.env
+    volumes:
+      - ./edl/_netrc:/root/.netrc:ro
+      - ./edl/_urs_cookies:/root/.urs_cookies
     environment:
       PORT: ${BACKEND_PORT:-8080}
       REDIS_URL: ${REDIS_URL}
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      NASA_POWER_BASE: ${NASA_POWER_BASE}
-      GES_DISC_BASE: ${GES_DISC_BASE}
-      OPEN_METEO_BASE: ${OPEN_METEO_BASE}
+      GPM_OPENDAP_BASE: ${GPM_OPENDAP_BASE}
+      MERRA_OPENDAP_BASE: ${MERRA_OPENDAP_BASE}
     depends_on:
       cache:
         condition: service_healthy
@@ -40,12 +38,22 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
-    networks:
-      - nimbus25-network
 
-volumes:
-  redis-data:
-
-networks:
-  nimbus25-network:
-    driver: bridge
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: nimbus25-frontend
+    env_file: ./.env
+    environment:
+      VITE_API_BASE: "http://backend:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8081}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
