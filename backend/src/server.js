@@ -8,7 +8,6 @@ app.use(express.json());
 const PORT = process.env.PORT || 8080;
 const REDIS_URL = process.env.REDIS_URL || "redis://cache:6379";
 
-// Redis client (compartido entre controladores)
 let redis;
 try {
   redis = new Redis(REDIS_URL, { lazyConnect: true, connectTimeout: 800 });
@@ -19,13 +18,11 @@ try {
   redis = null;
 }
 
-// Middleware para inyectar redis en req
 app.use((req, _res, next) => {
   req.redis = redis;
   next();
 });
 
-// Rutas
 app.use("/", routes);
 
 app.listen(PORT, () => {

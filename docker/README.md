@@ -4,7 +4,7 @@ Requisitos: Docker + Docker Compose.
 
 1. Copiar variables:
     ```bash
-    cp .env.example .env
+    cp .env.example ./docker/.env
     ````
 
 2. Build & up:
