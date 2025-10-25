@@ -85,14 +85,24 @@ jobs:
           cp -f .env.example .env 2>/dev/null || true
           {
             echo "BACKEND_PORT=${{ vars.BACKEND_PORT || '8080' }}"
-            echo "NODE_ENV=production"
-            echo "LOG_LEVEL=info"
+            echo "NODE_ENV=${{ vars.NODE_ENV || 'production' }}"
+            echo "LOG_LEVEL=${{ vars.LOG_LEVEL || 'info' }}"
             echo "REDIS_URL=${{ secrets.REDIS_URL }}"
             echo "GPM_OPENDAP_BASE=${{ secrets.GPM_OPENDAP_BASE }}"
             echo "MERRA_OPENDAP_BASE=${{ secrets.MERRA_OPENDAP_BASE }}"
           } >> .env
           echo "Definidas en CI: BACKEND_PORT, NODE_ENV, LOG_LEVEL, REDIS_URL=***, GPM_OPENDAP_BASE=***, MERRA_OPENDAP_BASE=***"
 
+      - name: Prepare EDL credentials
+        working-directory: docker/edl
+        run: |
+          mkdir -p .
+          {
+            echo "machine urs.earthdata.nasa.gov"
+            echo "login ${{ secrets.EDL_USERNAME }}"
+            echo "password ${{ secrets.EDL_PASSWORD }}"
+          } > _netrc
+          
       - name: Build & up (backend + cache)
         working-directory: docker
         run: |
