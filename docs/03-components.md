@@ -21,7 +21,7 @@ El backend es un monolito modular en Node.js (Express) con arquitectura hexagona
 
 | Módulo                             | Responsabilidad                                                                                                                  | Archivos/ubicación (relevantes)                                                                                             | Ejemplos de funciones                                                |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| **API Layer (REST)**               | Enruta y valida requests, arma respuestas, genera `traceId`                                                                      | `routes/*` , `services/weather/service.js` (como orquestador)                                            | `GET /probability`, `GET /status`, `GET /health`, `GET /history`     |
+| **API Layer (REST)**               | Enruta y valida requests, arma respuestas                                                                      | `routes/*` , `services/weather/service.js` (como orquestador)                                            | `GET /probability`, `GET /status`, `GET /health`, `GET /history`     |
 | **Weather Service (Core)**         | Orquesta el flujo: arma consulta, pide datos a adaptadores, normaliza, hace *merge* temporal/espacial y calcula métricas simples | `services/weather/service.js`, `services/weather/index.js`                                                                  | `getProbabilityFor(loc, date)`, `mergeSources()`, `computeMetrics()` |
 | **Adapters NASA (Ports/Adapters)** | Obtienen datos y los devuelven en un formato común del dominio                                                            | `services/weather/merra/*`, `services/weather/imerg.js`                                                                     | `readMERRA()`, `readIMERG()`                                         |
 | **OPeNDAP Client**                 | Cliente bajo nivel para Hyrax/OPeNDAP (HTTP + parsing ASCII/NC)                                                                  | `services/weather/opendap.js`, `services/weather/opendap-client.js`, `services/weather/http.js`, `services/weather/auth.js` | `fetchDDS/ASCII()`, `headOk()`, manejo de *retries*                  |
@@ -29,7 +29,6 @@ El backend es un monolito modular en Node.js (Express) con arquitectura hexagona
 | **Climatología/Climo (opcional)**  | Soporte a valores climatológicos (misma fecha)                                                                  | `services/weather/climo.js`, `services/weather/merra/climo-sameday.js`                                                      | `readClimoSameDay()`                                                 |
 | **Config**                         | Configuración centralizada, endpoints, timeouts, feature flags                                                                   | `services/weather/config.js`                                                                                                | `get('MERRA_BASE')`, `getTimeouts()`                                 |
 | **Cache (Redis)**                  | Cache de resultados y *health checks*                                                                                            | Integrado desde API/Service hacia Redis                                                                                     | `cache.get/set(key)`, *TTL* por endpoint                             |
-| **AuthN/AuthZ (Keycloak)**         | Validación de tokens, roles y sesiones                                                                                           | Integrado desde API hacia Keycloak                                                                                          | `validateToken()`, `requireRole('user')`                             |
 | **Observabilidad**                 | Logging estructurado y trazabilidad                                                                                              | `services/weather/logger.js`                                                                                                | `log.info({traceId,...})`                                            |
 
 ---
@@ -66,7 +65,7 @@ El backend es un monolito modular en Node.js (Express) con arquitectura hexagona
 
 - **services/weather/config.js:** Config del módulo (endpoints, timeouts, feature toggles).
 
-- **services/weather/logger.js:** Logger (niveles, traceId por request).
+- **services/weather/logger.js:** Logger (niveles).
 
 - **services/weather/utils.js:** Utilidades comunes (fechas, redondeos, unidades, etc.).
 
@@ -88,39 +87,45 @@ El backend es un monolito modular en Node.js (Express) con arquitectura hexagona
 
 ```plantuml
 @startuml
-title Diagrama de Componentes - Nimbus25 (actualizado)
+title Diagrama de Componentes - Proyecto "Nimbus25"
 
-node "Usuario" as USER
-component "App Móvil\nReact Native (Expo)" as MOBILE
+' === NODOS PRINCIPALES ===
+node "Dispositivo del Usuario" as USER
 
-node "Backend Monolito\nNode.js + Express" as BE {
-  [API Layer\n(controllers, validation)]
-  [Weather Service\n(orquestación + métricas)]
-  [Adapters: MERRA-2]
-  [Adapters: IMERG]
-  [OPeNDAP Client\nHTTP + parsing]
-  [Parsing/Normalization\n(grids, vars, units)]
-  [Config]
-  [Logger]
-}
+' === COMPONENTES ===
+component "Aplicación Móvil\n(Frontend - React Native + Expo)" as MOBILE
+component "Backend API\n(Node.js + Express)" as API
+component "Redis Cache" as REDIS
+component "MERRA-2\n(Datos Atmosféricos)" as MERRA2
+component "IMERG\n(Datos de Precipitación)" as IMERG
 
-database "Redis Cache" as REDIS
-component "Keycloak\n(IdP/OIDC)" as KC
-cloud "MERRA-2\n(Hyrax/OPeNDAP)" as MERRA2
-cloud "GPM IMERG\n(Hyrax/OPeNDAP)" as IMERG
+' === NOTAS ===
+note right of MOBILE
+Interfaz principal desarrollada en React Native con Expo.
+Permite seleccionar ubicación, fecha y tipo de evento.
+Consume la API del backend a través de solicitudes REST.
+end note
 
-USER --> MOBILE : Interacción
-MOBILE --> BE : REST (HTTPS)
-BE --> KC : Validación de token
-BE --> REDIS : get/set (TTL)
-API Layer --> Weather Service
-Weather Service --> "Adapters: MERRA-2"
-Weather Service --> "Adapters: IMERG"
-"Adapters: MERRA-2" --> "OPeNDAP Client"
-"Adapters: IMERG" --> "OPeNDAP Client"
-"OPeNDAP Client" --> MERRA2 : Fetch datasets
-"OPeNDAP Client" --> IMERG : Fetch datasets
-Weather Service --> "Parsing/Normalization"
+note right of API
+Expone endpoints REST:
+ 
+/probability
+/history
+Gestiona la lógica de negocio,
+autenticación y comunicación con otros servicios.
+end note
+
+note right of REDIS
+Almacena temporalmente resultados
+de consultas y verificaciones de estado.
+end note
+
+' === RELACIONES ===
+USER --> MOBILE : Interacción del usuario
+MOBILE --> API : Solicitudes HTTP (REST)
+API --> REDIS : Cache de resultados
+API --> MERRA2 : Consulta de datos atmosféricos
+API --> IMERG : Consulta de datos de precipitación
 
 @enduml
 
@@ -130,19 +135,17 @@ Weather Service --> "Parsing/Normalization"
 
 ## 🔄 Flujo general de ejecución
 
-1. API valida parámetros, genera traceId y consulta Redis.
+1. API valida parámetros
 
-2. Si hit → responde. Si miss:
+2. Weather Service arma la consulta (fuentes, variables, granularidad, zona).
 
-3. Weather Service arma la consulta (fuentes, variables, granularidad, zona).
+3. Adapters (IMERG / MERRA-2) traen datos vía OPeNDAP/HTTP.
 
-4. Adapters (IMERG / MERRA-2) traen datos vía OPeNDAP/HTTP.
+4. Parsing/Normalization limpian y unifican.
 
-5. Parsing/Normalization limpian y unifican.
+5. Weather Service hace merge temporal y calcula métricas.
 
-6. Weather Service hace merge temporal y calcula métricas.
-
-7. Se guarda en Redis con TTL y se responde al frontend (incluye traceId y systemStatus).
+6. Se guarda en Redis con TTL y se responde al frontend.
 
 ---
 
