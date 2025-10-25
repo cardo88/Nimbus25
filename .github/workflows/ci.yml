@@ -78,8 +78,21 @@ jobs:
     needs: verify-gitignore
     steps:
       - uses: actions/checkout@v4
+
       - name: Prepare env
-        run: cp .env.example .env
+        working-directory: docker
+        run: |
+          cp -f .env.example .env 2>/dev/null || true
+          {
+            echo "BACKEND_PORT=${{ vars.BACKEND_PORT || '8080' }}"
+            echo "NODE_ENV=production"
+            echo "LOG_LEVEL=info"
+            echo "REDIS_URL=${{ secrets.REDIS_URL }}"
+            echo "GPM_OPENDAP_BASE=${{ secrets.GPM_OPENDAP_BASE }}"
+            echo "MERRA_OPENDAP_BASE=${{ secrets.MERRA_OPENDAP_BASE }}"
+          } >> .env
+          echo "Definidas en CI: BACKEND_PORT, NODE_ENV, LOG_LEVEL, REDIS_URL=***, GPM_OPENDAP_BASE=***, MERRA_OPENDAP_BASE=***"
+
       - name: Build & up (backend + cache)
         working-directory: docker
         run: |
@@ -87,18 +100,22 @@ jobs:
           docker compose up -d cache backend
           echo "Waiting services..."
           sleep 10
+
       - name: Smoke /health and /status
         working-directory: docker
         run: bash ./test/smoke.sh
+
       - name: Logs on failure
         if: failure()
         working-directory: docker
         run: docker compose logs --no-color > compose.log
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: compose-logs
           path: docker/compose.log
+
       - name: Down
         if: always()
         working-directory: docker
