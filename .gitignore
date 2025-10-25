@@ -143,3 +143,9 @@ ios/Pods.xcodeproj/
 # CocoaPods (repetición adicional a pedido: conservar)
 ios/Pods/
 ios/Pods.xcodeproj/
+
+# ===================================
+# 10) NASA Apis
+# ===================================
+docker/edl/
+docker/edl/_netrc
