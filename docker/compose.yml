@@ -23,11 +23,11 @@ services:
       - ./edl/_urs_cookies:/root/.urs_cookies
     environment:
       PORT: ${BACKEND_PORT:-8080}
-      REDIS_URL: ${REDIS_URL}
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      GPM_OPENDAP_BASE: ${GPM_OPENDAP_BASE}
-      MERRA_OPENDAP_BASE: ${MERRA_OPENDAP_BASE}
+      REDIS_URL: ${REDIS_URL:?missing REDIS_URL}
+      GPM_OPENDAP_BASE: ${GPM_OPENDAP_BASE:?missing GPM_OPENDAP_BASE}
+      MERRA_OPENDAP_BASE: ${MERRA_OPENDAP_BASE:?missing MERRA_OPENDAP_BASE}
     depends_on:
       cache:
         condition: service_healthy
@@ -35,25 +35,6 @@ services:
       - "${BACKEND_PORT:-8080}:8080"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 30
-
-  frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-    container_name: nimbus25-frontend
-    env_file: ./.env
-    environment:
-      VITE_API_BASE: "http://backend:8080"
-    depends_on:
-      backend:
-        condition: service_healthy
-    ports:
-      - "${FRONTEND_PORT:-8081}:80"
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/"]
       interval: 5s
       timeout: 3s
       retries: 30
