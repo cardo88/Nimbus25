@@ -18,7 +18,6 @@ Los datos satelitales y climatológicos de la NASA ofrecen información valiosa,
 El sistema integra varias fuentes de datos, aplica análisis estadístico sobre registros históricos y presenta los resultados en una interfaz amigable que incluye:
 - Mapa interactivo  
 - Indicadores de probabilidad y riesgo  
-- Gráficos explicativos  
 - Estado en tiempo real de las APIs NASA utilizadas  
 
 ---
@@ -30,18 +29,16 @@ El **prototipo (MVP)** que presentaremos en esta instancia del reto incluye:
 - Backend local con endpoints `/probability`, `/status`, `/health`, `/history`
 - Merge y procesamiento básico de datasets NASA seleccionados  
 - Cálculo simple de probabilidades basado en percentiles históricos  
-- Cache local para evitar dependencias externas durante la demo  
-- Frontend móvil/web con diseño basado en Figma del equipo de UI  
-- Dark/Light mode y página de estado del sistema  
+- Cache local para almacenar las busquedas recientes
+- Frontend móvil con diseño basado en Figma del equipo de UI  
 - Documentación técnica completa y reproducible  
 
 ---
 
 ## 🛰️ Fuentes de datos principales
 
-- **NASA POWER API** – datos de radiación, temperatura, viento  
-- **Open-METEO** – series temporales meteorológicas de libre acceso  
-- **GES DISC (NASA)** – datasets de precipitación global (opcional para ampliación)
+- **NASA MERRA** (Modern-Era Retrospective Analysis for Research and Applications, Version 2) - provee datos atmosféricos horarios (temperatura, humedad, viento, presión).
+- **NASS IMERG** (Global Precipitation Measurement - Integrated Multi-satellite Retrievals) - provee datos de precipitación diaria (en fase de integración).
 
 ---
 
@@ -49,11 +46,11 @@ El **prototipo (MVP)** que presentaremos en esta instancia del reto incluye:
 
 | Capa | Tecnología sugerida |
 |------|----------------------|
-| Frontend | React / Flutter (según decisión del equipo UI) |
-| Backend | Node.js (Express) o Python (FastAPI) |
-| Cache/DB | SQLite o Redis local |
-| Contenedores | Docker + Docker Compose |
-| Documentación | Markdown + OpenAPI + PlantUML |
+| Frontend | React Native + Expo con orientación a iOS. |
+| Backend | Node.js (Express) y Python (FastAPI) |
+| Cache/DB | Redis local |
+| Contenedores | Docker + Docker Compose + Github Actions |
+| Documentación | Markdown + PlantUML |
 
 ---
 
@@ -61,7 +58,6 @@ El **prototipo (MVP)** que presentaremos en esta instancia del reto incluye:
 
 - Integración efectiva de datos abiertos de la NASA  
 - Prototipo reproducible y portable (local-first)  
-- Resiliencia ante fallos de APIs (modo degradado)  
 - Diseño modular listo para escalar a nube o microservicios  
 - Experiencia de usuario centrada en visualización y claridad  
 
@@ -69,11 +65,12 @@ El **prototipo (MVP)** que presentaremos en esta instancia del reto incluye:
 
 ## 🚀 Próximos pasos
 
-1. Completar los diagramas y contratos de API  
-2. Implementar backend base con endpoints y manejo de cache  
-3. Conectar frontend al backend y mostrar resultados en mapa  
-4. Agregar monitoreo de salud de fuentes y métricas básicas  
-5. Preparar despliegue local y documentación final
+1. Finalización de la autenticación con Keycloak
+2. Implementación de CI/CD en GitHub Actions (on going) 
+3. Despliegue en nube  
+4. Ampliación de datasets
+5. Expansión multiplataforma
+6. Mejoras adicionales
 
 ---
 

@@ -20,7 +20,6 @@ El objetivo es garantizar que todos los integrantes del equipo puedan trabajar d
 | **Node.js** | ≥ 20.x | Para ejecutar el backend (Express) |
 | **Python (alternativo)** | ≥ 3.10 | Opción alternativa si se usa FastAPI |
 | **Docker Desktop / CLI** | ≥ 4.x | Contenedores y orquestación local |
-| **PlantUML** | ≥ 1.2023 | Generación de diagramas |
 | **VS Code** | Última | Editor de código recomendado |
 | **Postman / cURL** | — | Pruebas de endpoints REST |
 
@@ -30,15 +29,13 @@ El objetivo es garantizar que todos los integrantes del equipo puedan trabajar d
 
 ```bash
 Nimbus25/
-├── frontend/               # Interfaz web o móvil (según tecnología elegida)
+├── frontend/               # Interfaz web o móvil 
 ├── backend/                # Lógica del servidor y API REST
-│   ├── api/                # Endpoints y middlewares
-│   ├── domain/             # Lógica de negocio y cálculos
-│   ├── adapters/           # Clientes NASA, cache, métricas, logger
-│   └── scheduler/          # Tareas automáticas (opcional)
+│   ├── controllers/        # Endpoints
+│   ├── routes/             # Enrutamiento
+│   ├── services/           # Clientes NASA y métricas
 ├── docker/                 # Archivos de despliegue local
-├── docs/                   # Documentación técnica
-└── .env.example            # Variables de entorno base
+└── docs/                   # Documentación técnica
 ```
 
 ---
@@ -110,33 +107,8 @@ Nimbus25/
 ```bash
 curl http://localhost:8080/health
 curl http://localhost:8080/status
-curl "http://localhost:8080/probability?lat=-34.9&lon=-56.2&date=2025-10-10&condition=rain"
+curl "http://localhost:8080/probability?lat=-34.9&lon=-56.2&date=2025-10-10
 ```
-
-### Pruebas automáticas (si se incluyen)
-```bash
-npm test
-```
-
----
-
-## 🌐 Configuración del frontend (según elección del equipo)
-
-### Si se usa **React**
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Acceso en [http://localhost:5173](http://localhost:5173)
-
-### Si se usa **Flutter**
-```bash
-cd frontend
-flutter pub get
-flutter run -d chrome
-```
-Acceso en [http://localhost:8080](http://localhost:8080)
 
 ---
 
@@ -145,7 +117,7 @@ Acceso en [http://localhost:8080](http://localhost:8080)
 - Mantener `.env` fuera del control de versiones (`.gitignore`)  
 - Usar ramas por feature (`feat/`, `fix/`, `refactor/`)  
 - Hacer `pull` frecuente desde `main` para evitar conflictos  
-- Nombrar commits descriptivamente (en inglés o español uniforme)  
+- Nombrar commits descriptivamente (en inglés)  
 - Validar endpoints antes de mergear cambios  
 - Actualizar documentación si se agregan endpoints o variables  
 
