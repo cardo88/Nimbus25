@@ -13,82 +13,136 @@ Describir la estructura interna del backend y los componentes principales que co
 
 ## 🧠 Visión general
 
-El backend de Nimbus25 sigue un enfoque **monolito modular**, basado en los principios de **arquitectura hexagonal (puertos y adaptadores)**.  
-Esto permite mantener la lógica de negocio independiente de los detalles técnicos y facilita la futura transición hacia una arquitectura de microservicios.
+El backend es un monolito modular en Node.js (Express) con arquitectura hexagonal (puertos y adaptadores). La lógica de negocio vive aislada de detalles de infraestructura (HTTP, OPeNDAP, cache, IAM). El frontend es React Native (Expo) que consume endpoints REST.
 
 ---
 
 ## 🧰 Módulos principales
 
-| Módulo | Descripción | Ejemplos de funciones |
-|--------|--------------|-----------------------|
-| **API Layer** | Gestiona las solicitudes HTTP provenientes del frontend. Expone endpoints REST, valida parámetros y formatea las respuestas. | `/probability`, `/status`, `/health`, `/history` |
-| **Domain Layer** | Contiene la lógica central del sistema: procesamiento, merge y cálculo estadístico. No depende de frameworks ni librerías externas. | `calcularProbabilidad()`, `mergearDatos()`, `generarMetricas()` |
-| **NASA Adapter** | Se encarga de consultar las APIs de la NASA u otras fuentes, transformar los datos a un formato común y manejar errores o caídas de red. | `fetchPowerData()`, `fetchGesDiscData()` |
+| Módulo                             | Responsabilidad                                                                                                                  | Archivos/ubicación (relevantes)                                                                                             | Ejemplos de funciones                                                |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| **API Layer (REST)**               | Enruta y valida requests, arma respuestas, genera `traceId`                                                                      | `routes/*` , `services/weather/service.js` (como orquestador)                                            | `GET /probability`, `GET /status`, `GET /health`, `GET /history`     |
+| **Weather Service (Core)**         | Orquesta el flujo: arma consulta, pide datos a adaptadores, normaliza, hace *merge* temporal/espacial y calcula métricas simples | `services/weather/service.js`, `services/weather/index.js`                                                                  | `getProbabilityFor(loc, date)`, `mergeSources()`, `computeMetrics()` |
+| **Adapters NASA (Ports/Adapters)** | Obtienen datos y los devuelven en un formato común del dominio                                                            | `services/weather/merra/*`, `services/weather/imerg.js`                                                                     | `readMERRA()`, `readIMERG()`                                         |
+| **OPeNDAP Client**                 | Cliente bajo nivel para Hyrax/OPeNDAP (HTTP + parsing ASCII/NC)                                                                  | `services/weather/opendap.js`, `services/weather/opendap-client.js`, `services/weather/http.js`, `services/weather/auth.js` | `fetchDDS/ASCII()`, `headOk()`, manejo de *retries*                  |
+| **Parsing & Normalization**        | Parseo y normalización de payloads, grillas, variables y unidades                                                                | `services/weather/parsing.js`, `services/weather/grid.js`, `services/weather/variables.js`, `services/weather/urls.js`      | `parseAsciiArray()`, `buildGridIndex()`, `mapVariable('T2M')`        |
+| **Climatología/Climo (opcional)**  | Soporte a valores climatológicos (misma fecha)                                                                  | `services/weather/climo.js`, `services/weather/merra/climo-sameday.js`                                                      | `readClimoSameDay()`                                                 |
+| **Config**                         | Configuración centralizada, endpoints, timeouts, feature flags                                                                   | `services/weather/config.js`                                                                                                | `get('MERRA_BASE')`, `getTimeouts()`                                 |
+| **Cache (Redis)**                  | Cache de resultados y *health checks*                                                                                            | Integrado desde API/Service hacia Redis                                                                                     | `cache.get/set(key)`, *TTL* por endpoint                             |
+| **AuthN/AuthZ (Keycloak)**         | Validación de tokens, roles y sesiones                                                                                           | Integrado desde API hacia Keycloak                                                                                          | `validateToken()`, `requireRole('user')`                             |
+| **Observabilidad**                 | Logging estructurado y trazabilidad                                                                                              | `services/weather/logger.js`                                                                                                | `log.info({traceId,...})`                                            |
 
 ---
+
+## Mapeo de archivos reales, responsabilidades
+
+- **services/weather/service.js:** Orquestador del caso de uso /probability. Pide a MERRA-2/IMERG según parámetros, fusiona, calcula métricas (ej. probabilidad de precipitación, intensidad esperada) y devuelve DTO.
+
+- **services/weather/index.js:** Punto de entrada del weather service (exporta funciones públicas del módulo).
+
+- **services/weather/imerg.js:** Adapter GPM/IMERG. Resuelve URL/vars, consulta por OPeNDAP/HTTP y normaliza precipitación.
+
+- **services/weather/merra/index.js:** Adapter MERRA-2. Coordina lectura de variables MERRA-2.
+
+- **services/weather/merra/read-merra.js:** Lectura de variables puntuales vía OPeNDAP.
+
+- **services/weather/merra/opendap-client.js:** Llamados de bajo nivel a OPeNDAP (Hyrax) para MERRA-2.
+
+- **services/weather/merra/variables.js:** Catálogo/alias de variables MERRA-2 usadas por Nimbus25.
+
+- **services/weather/merra/urls.js:** Construcción de endpoints OPeNDAP MERRA-2 por fecha/hora/granularidad.
+
+- **services/weather/parsing.js:** Parsing de respuestas ASCII/DAP2/Hyrax a arrays y estructuras tabulares.
+
+- **services/weather/grid.js:** Utilidades de grilla (ubicación índices/nearest neighbor, bounding box, etc.).
+
+- **services/weather/opendap.js:** Cliente genérico OPeNDAP (comparte lógica para MERRA-2 e IMERG).
+
+- **services/weather/http.js:** Wrapper HTTP, timeouts, retries y User-Agent.
+
+- **services/weather/auth.js:** Manejo de credenciales/cookies/tokens si el servidor OPeNDAP lo requiere.
+
+- **services/weather/climo.js y services/weather/merra/climo-sameday.js:** Lecturas climatológicas (misma fecha históricamente) para baselines.
+
+- **services/weather/config.js:** Config del módulo (endpoints, timeouts, feature toggles).
+
+- **services/weather/logger.js:** Logger (niveles, traceId por request).
+
+- **services/weather/utils.js:** Utilidades comunes (fechas, redondeos, unidades, etc.).
+
+## Datos y métricas (resumen)
+
+### Fuentes:
+
+*MERRA-2*: variables atmosféricas de superficie/10 m necesarias para contexto y ajuste (p.ej. temperatura T2M, humedad QV2M/RH si se deriva, viento U10M/V10M).
+
+*GPM/IMERG*: precipitación (tasa/acumulado) a alta resolución temporal.
+
+*Normalización*: conversión de unidades (K→°C, kg/kg→%, mm/hr→mm).
+
+*Cálculos*: probabilidad de precipitación en ventana hours, intensidad esperada.
+
+*Climo*: baseline del mismo día (histórico) para relativizar riesgo.
 
 ## 🧩 Diagrama de componentes
 
 ```plantuml
 @startuml
-title Diagrama de Componentes - Proyecto "Nimbus25"
+title Diagrama de Componentes - Nimbus25 (actualizado)
 
-' === NODOS PRINCIPALES ===
-node "Dispositivo del Usuario" as USER
+node "Usuario" as USER
+component "App Móvil\nReact Native (Expo)" as MOBILE
 
-' === COMPONENTES ===
-component "Aplicación Móvil\n(Frontend - React Native + Expo)" as MOBILE
-component "Backend API\n(Node.js + Express)" as API
-component "Redis Cache" as REDIS
-component "Keycloak\n(Gestión de Identidad)" as KC
-component "MERRA-2\n(Datos Atmosféricos)" as MERRA2
-component "IMERG\n(Datos de Precipitación)" as IMERG
+node "Backend Monolito\nNode.js + Express" as BE {
+  [API Layer\n(controllers, validation)]
+  [Weather Service\n(orquestación + métricas)]
+  [Adapters: MERRA-2]
+  [Adapters: IMERG]
+  [OPeNDAP Client\nHTTP + parsing]
+  [Parsing/Normalization\n(grids, vars, units)]
+  [Config]
+  [Logger]
+}
 
-' === NOTAS ===
-note right of MOBILE
-Interfaz principal desarrollada en React Native con Expo.
-Permite seleccionar ubicación, fecha y tipo de evento.
-Consume la API del backend a través de solicitudes REST.
-end note
+database "Redis Cache" as REDIS
+component "Keycloak\n(IdP/OIDC)" as KC
+cloud "MERRA-2\n(Hyrax/OPeNDAP)" as MERRA2
+cloud "GPM IMERG\n(Hyrax/OPeNDAP)" as IMERG
 
-note right of API
-Expone endpoints REST:
- - /probability
- - /history
-Gestiona la lógica de negocio,
-autenticación y comunicación con otros servicios.
-end note
-
-note right of REDIS
-Almacena temporalmente resultados
-de consultas y verificaciones de estado.
-end note
-
-note right of KC
-Proveedor de autenticación y autorización.
-Maneja roles, sesiones y tokens.
-end note
-
-' === RELACIONES ===
-USER --> MOBILE : Interacción del usuario
-MOBILE --> API : Solicitudes HTTP (REST)
-API --> REDIS : Cache de resultados
-API --> KC : Validación de tokens / autenticación
-API --> MERRA2 : Consulta de datos atmosféricos
-API --> IMERG : Consulta de datos de precipitación
+USER --> MOBILE : Interacción
+MOBILE --> BE : REST (HTTPS)
+BE --> KC : Validación de token
+BE --> REDIS : get/set (TTL)
+API Layer --> Weather Service
+Weather Service --> "Adapters: MERRA-2"
+Weather Service --> "Adapters: IMERG"
+"Adapters: MERRA-2" --> "OPeNDAP Client"
+"Adapters: IMERG" --> "OPeNDAP Client"
+"OPeNDAP Client" --> MERRA2 : Fetch datasets
+"OPeNDAP Client" --> IMERG : Fetch datasets
+Weather Service --> "Parsing/Normalization"
 
 @enduml
+
 ```
 
 ---
 
 ## 🔄 Flujo general de ejecución
 
-1. El usuario envía una solicitud al **endpoint REST**.  
-2. El **Backend** valida los parámetros y delega la solicitud a las **Apis de la NASA**.
-5. Los datos se procesan, normalizan.
-6. El resultado se devuelve al frontend junto con el estado del sistema y un `traceId`.
+1. API valida parámetros, genera traceId y consulta Redis.
+
+2. Si hit → responde. Si miss:
+
+3. Weather Service arma la consulta (fuentes, variables, granularidad, zona).
+
+4. Adapters (IMERG / MERRA-2) traen datos vía OPeNDAP/HTTP.
+
+5. Parsing/Normalization limpian y unifican.
+
+6. Weather Service hace merge temporal y calcula métricas.
+
+7. Se guarda en Redis con TTL y se responde al frontend (incluye traceId y systemStatus).
 
 ---
 
