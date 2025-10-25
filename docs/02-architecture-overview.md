@@ -41,6 +41,44 @@ El sistema está compuesto por tres capas principales:
 
 ```plantuml
 @startuml
+title Vista de la Arquitectura - Nimbus25
+
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+actor "Usuario" as user
+
+package "Capa Específica" {
+  [Frontend]
+  [Backend]
+}
+
+package "Capa General" {
+  [Cache]
+  [APIs NASA]
+  [Logger]
+  [Métricas]
+}
+
+user --> [Frontend] : Interacción vía UI
+[Frontend] --> [Backend] : REST / HTTPS
+[Backend] --> [Cache] : Redis
+[Backend] --> [APIs NASA] : APIs HTTP
+[Backend] --> [Logger]
+[Backend] --> [Métricas]
+
+note right of [Backend]
+- Procesa datos y calcula probabilidades  
+- Expone /probability, /status, /health, /history  
+- Gestiona cache y resiliencia
+end note
+
+@enduml
+````
+
+```plantuml
+@startuml
 title Arquitectura General - Nimbus25
 
 actor Usuario
@@ -112,6 +150,10 @@ end note
 | Diagramas          | PlantUML / Draw.io                       |
 | Monitoreo          | Health checks + logs JSON                |
 | Control de versión | Git + GitHub                             |
+| Apis externas      | NASA Open APIs                           |
+| Métricas y salud   | Endpoints /health, /status               |
+| Control de versión | Git + GitHub / GitLab                    |
+| CI/CD              | GitHub Actions / Docker Hub              |
 
 ---
 
