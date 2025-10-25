@@ -8,7 +8,7 @@
 ## 🎯 Propósito del documento
 
 Definir cómo se estructuran, procesan y cachean los datos en el sistema Nimbus25.
-Este documento detalla los **datasets satelitales utilizados**, las **variables atmosféricas manejadas**, las **claves de integración (merge)** y la **estrategia de cache y normalización** aplicada en el backend.
+Este documento detalla los **datasets satelitales utilizados**, las **variables atmosféricas manejadas** y las **claves de integración (merge)** aplicadas en el backend.
 
 ---
 
@@ -100,41 +100,6 @@ El sistema no usa percentiles históricos sino probabilidad instantánea de prec
   "expectedIntensityMm": 3.2,
   "category": "moderate"
 }
-```
----
-
-## 🧠 Estrategia de cache y almacenamiento
-
-| Nivel                          | Tecnología              | Propósito                                                                  |
-| ------------------------------ | ----------------------- | -------------------------------------------------------------------------- |
-| **Redis Cache**                | Redis (Docker)          | Guardar resultados ya calculados para evitar consultas repetidas a OPeNDAP |
-| **In-Memory (runtime)**        | Node.js                 | Cache temporal de parsing y metadatos de URLs                              |
-| **Archivos temporales (/tmp)** | JSON                    | Depuración y respaldo transitorio durante ejecución                        |
-| **Logs**                       | Consola / archivo plano | Auditoría y trazabilidad con `traceId`                                     |
-
-### Política de cache-aside
-
-1. El endpoint /probability busca primero en Redis (lat,lon,date,hours).
-2. Si no existe, ejecuta el flujo completo de fetch y procesamiento.
-3. Guarda el resultado en cache con TTL configurable (10–30 min).
-4. Si una fuente falla, devuelve el último valor cacheado con sourceStatus: degraded.
----
-
-## 📦 Estructura en cache (Redis)
-
-```sql
-Key: "probability:-34.9:-56.2:2025-10-25:6h"
-Value:
-{
-  "traceId": "9e2f...b1",
-  "probabilityRain": 0.62,
-  "expectedIntensityMm": 3.1,
-  "category": "moderate",
-  "timestamp": "2025-10-25T13:20:00Z",
-  "sources": {"imerg": "ok", "merra2": "ok"}
-}
-TTL: 1800 s
-
 ```
 ---
 
