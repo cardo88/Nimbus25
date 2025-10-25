@@ -96,12 +96,12 @@ jobs:
       - name: Prepare EDL credentials
         working-directory: docker/edl
         run: |
-          mkdir -p .
           {
             echo "machine urs.earthdata.nasa.gov"
             echo "login ${{ secrets.EDL_USERNAME }}"
             echo "password ${{ secrets.EDL_PASSWORD }}"
           } > _netrc
+          echo "_netrc file created successfully in docker/edl"
           
       - name: Build & up (backend + cache)
         working-directory: docker
