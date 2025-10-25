@@ -30,7 +30,7 @@ El sistema se compone de tres capas principales:
 
 1. **Frontend**  
    - Interfaz móvil/web basada en el diseño del equipo de UI (Figma)  
-   - Dark/Light mode, múltiples pantallas (consulta, estado, configuración, historial)
+   - Múltiples pantallas (consulta, estado, configuración, historial)
 
 2. **Backend**  
    - API REST con endpoints `/probability`, `/status`, `/health`, `/history`  
@@ -94,12 +94,12 @@ Nimbus25/
 
 | Área | Tecnología sugerida |
 |------|----------------------|
-| Frontend | React / Flutter (a elección del equipo de UI) |
-| Backend | Node.js (Express) o Python (FastAPI) |
-| Base de datos / cache | SQLite o Redis local |
+| Frontend | React (a elección del equipo de UI) |
+| Backend | Node.js (Express) |
+| Base de datos / cache | Redis local |
 | Contenedores | Docker + Docker Compose |
 | Diagramas | PlantUML / Draw.io |
-| APIs NASA | Open-METEO, POWER API, GES DISC |
+| APIs NASA | OPeNDAP (MERRA-2/GPM IMERG) |
 | Control de versión | Git + GitHub |
 | Documentación | Markdown + OpenAPI |
 
@@ -119,18 +119,24 @@ Nimbus25/
 
 | Nombre | Rol | Área |
 |--------|-----|------|
-| *(agregar integrantes)* | | |
-| *(agregar integrantes)* | | |
-| *(agregar integrantes)* | | |
+| *Ana Belén Bulla* | Backend | Lógica y autenticación |
+| *Giuliana Bordón* | Frontend | --- |
+| *Ricardo Castro* | Backend / DevOps | CI/CD y almacenamiento |
+| *Leonardo Conde* | Backend | Servicios e integración con las APIs |
+| *Juan Gambetta* | Frontend | --- |
 
 ---
 
 ## 📅 Estado actual
 
 - ✅ Etapa de diseño conceptual  
-- 🔄 Documentación técnica en progreso  
-- ⏳ Implementación del prototipo (backend + front)  
-- 🧭 Próximo paso: definir endpoints mínimos y flujos de datos
+- ✅ Documentación técnica en progreso  
+- ✅ Implementación del prototipo (backend + front)
+- ✅ Endpoints y flujos de datos definidos
+- ✅ Prototipo de alta fidelidad terminado
+- ✅ Adelanto del informe presentado
+- ✅ Integración Front/Back concluída y testeada
+- ✅ Repositorio pronto para entregar
 
 ---
 
