@@ -3,12 +3,10 @@ name: CI
 on:
   push:
     branches: 
-    - feature/github-actions
-    - feature/github-actions-without-sec
+    - "*"
   pull_request:
     branches: 
-    - feature/github-actions
-    - feature/github-actions-without-sec
+    - "*"
   workflow_dispatch:
 
 permissions:
