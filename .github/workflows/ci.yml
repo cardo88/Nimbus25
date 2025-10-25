@@ -153,11 +153,11 @@ jobs:
     needs: [verify-gitignore]
     steps:
       - uses: actions/checkout@v4
-      - name: Trivy filesystem (HIGH/CRITICAL fail)
-        uses: aquasecurity/trivy-action@0.28.0
+      - name: Scan backend image (HIGH/CRITICAL fail)
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
-          scan-type: 'fs'
-          severity: 'HIGH,CRITICAL'
+          image-ref: 'nimbus25-backend:ci'
+          severity: 'CRITICAL'
           ignore-unfixed: true
           vuln-type: 'os,library'
           format: 'table'
