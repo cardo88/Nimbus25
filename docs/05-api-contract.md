@@ -69,64 +69,47 @@ Devuelve el estado actual de las **fuentes de datos** (APIs NASA) y de la **cach
 
 ```json
 {
-  "sources": [
-    { "name": "NASA POWER", "status": "DOWN" }
-  ],
-  "cache": { "hitRatio": 0.75 },
-  "message": "Una o más fuentes de datos no responden."
+    "version": "0.0.1",
+    "providers": {
+        "dataIntegration": {
+            "ok": false,
+            "error": "Error",
+            "latency_ms": 13
+        }
+    }
 }
 ```
 
 ---
 
-### 3️⃣ `GET /probability`
+### 3️⃣ `POST /probability`
 
 Devuelve la probabilidad estimada de que ocurra una **condición extrema** (lluvia, calor, viento, etc.) en una ubicación y fecha determinadas.
 
 | Propósito     | Obtener probabilidad y estado de datos para un punto geográfico. |
 | ------------- | ---------------------------------------------------------------- |
-| Método        | `GET`                                                            |
+| Método        | `POST`                                                            |
 | Autenticación | No requerida en MVP                                              |
 | Parámetros    |                                                                  |
 | `lat`         | (float) Latitud en grados decimales                              |
 | `lon`         | (float) Longitud en grados decimales                             |
 | `date`        | (string, formato `YYYY-MM-DD`) Fecha de consulta                 |
-| `condition`   | (string) Tipo de condición: `rain`, `wind`, `heat`               |
 
 #### ✅ Respuesta 200 OK
 
 ```json
 {
-  "probability": 0.73,
-  "condition": "rain",
-  "method": "percentile_p90",
-  "data_source_status": "FRESH",
-  "traceId": "abc123ef45",
-  "timestamp": "2025-10-10T22:30:00Z"
-}
-```
-
-#### ⚠️ Respuesta 200 (modo degradado)
-
-```json
-{
-  "probability": 0.65,
-  "condition": "rain",
-  "method": "cached_estimation",
-  "data_source_status": "DEGRADED",
-  "traceId": "cdef4567",
-  "timestamp": "2025-10-10T22:30:00Z"
-}
-```
-
-#### ❌ Respuesta 503 (no hay datos disponibles)
-
-```json
-{
-  "code": "DATA_UNAVAILABLE",
-  "message": "No hay información para la fecha y ubicación solicitadas.",
-  "traceId": "xyz789",
-  "status": 503
+  "probability": 0.19,
+  "condition": "sunny",
+  "temperature_max": 27.5,
+  "temperature_min": 17.9,
+  "inputs": {
+    "lat": -34.9,
+    "lon": -56.2,
+    "date": "2025-10-20"
+  },
+  "source": "integrationServiceMock",
+  "timestamp": "2025-10-18T18:23:16.611Z"
 }
 ```
 
@@ -144,77 +127,23 @@ Devuelve el historial de consultas recientes realizadas desde el mismo dispositi
 
 ```json
 {
+  "user": "service-account-nimbus25-backend",
+  "count": 1,
   "history": [
     {
-      "lat": -34.9,
-      "lon": -56.2,
-      "date": "2025-10-10",
-      "condition": "rain",
-      "probability": 0.72,
-      "createdAt": "2025-10-10T20:15:00Z"
-    },
-    {
-      "lat": -33.5,
-      "lon": -57.1,
-      "date": "2025-10-09",
-      "condition": "wind",
-      "probability": 0.41,
-      "createdAt": "2025-10-09T19:00:00Z"
+      "probability": 0.7,
+      "condition": "cloudy",
+      "temperature_max": 28.6,
+      "temperature_min": 18.8,
+      "inputs": {
+        "lat": -34.9,
+        "lon": -56.16,
+        "date": "2025-10-21"
+      },
+      "source": "integrationServiceMock",
+      "timestamp": "2025-10-21T02:31:36.183Z"
     }
   ]
-}
-```
-
----
-
-## 🧱 Estructura general de errores
-
-Todos los errores comparten el mismo formato de respuesta JSON:
-
-```json
-{
-  "code": "ERROR_TYPE",
-  "message": "Descripción legible para humanos",
-  "traceId": "uuid-o-id-de-petición"
-}
-```
-
-| Código             | Descripción                                     |
-| ------------------ | ----------------------------------------------- |
-| `DATA_UNAVAILABLE` | No hay datos válidos para la fecha o ubicación. |
-| `API_TIMEOUT`      | Alguna fuente NASA no respondió a tiempo.       |
-| `INVALID_PARAMS`   | Parámetros ausentes o incorrectos.              |
-| `INTERNAL_ERROR`   | Error inesperado del servidor.                  |
-
----
-
-## 🧠 Convenciones adicionales
-
-* **Respuestas siempre JSON**
-  Todos los endpoints responden en formato `application/json`.
-
-* **Trazabilidad (`traceId`)**
-  Cada petición recibe un identificador único para correlacionar logs.
-
-* **Versionado**
-  El MVP no versiona endpoints aún, pero se prevé prefijo `/api/v1/` en etapas futuras.
-
----
-
-## 🧩 Ejemplo de flujo completo (curl)
-
-```bash
-curl -X GET "http://localhost:8080/probability?lat=-34.9&lon=-56.2&date=2025-10-10&condition=rain"
-```
-
-**Respuesta esperada:**
-
-```json
-{
-  "probability": 0.73,
-  "condition": "rain",
-  "data_source_status": "FRESH",
-  "method": "percentile_p90"
 }
 ```
 

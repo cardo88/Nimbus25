@@ -1,0 +1,40 @@
+name: nimbus25
+
+services:
+  cache:
+    image: redis:7-alpine
+    container_name: nimbus25-cache
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 20
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: nimbus25-backend
+    env_file: ./.env
+    volumes:
+      - ./edl/_netrc:/root/.netrc:ro
+      - ./edl/_urs_cookies:/root/.urs_cookies
+    environment:
+      PORT: ${BACKEND_PORT:-8080}
+      NODE_ENV: ${NODE_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      REDIS_URL: ${REDIS_URL:?missing REDIS_URL}
+      GPM_OPENDAP_BASE: ${GPM_OPENDAP_BASE:?missing GPM_OPENDAP_BASE}
+      MERRA_OPENDAP_BASE: ${MERRA_OPENDAP_BASE:?missing MERRA_OPENDAP_BASE}
+    depends_on:
+      cache:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30

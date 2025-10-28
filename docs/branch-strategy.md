@@ -34,7 +34,7 @@ git push -u origin refactor/restructure-project-folders
 # Al mergear, crear tag:
 git checkout main
 git pull
-git tag -a v0.3.0 -m "Entrega UT2 - revisión profesores"
+git tag -a v0.3.0 -m "comentario"
 git push origin v0.3.0
 ```
 
